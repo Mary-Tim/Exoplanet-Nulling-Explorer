@@ -26,7 +26,7 @@ phase_bins = 360
 spectrum_range = np.array([5., 25.], dtype=np.float64) * 1e-6
 spectrum_bins = 30
 integral_time = 540.
-earth_location=np.array([100./np.sqrt(2), 100./np.sqrt(2)]) / cons._radian_to_mac
+earth_location=np.array([100./np.sqrt(2), 100./np.sqrt(2)]) / cons._radian_to_mas
 earth_temperature = 285.
 
 cfg.set_property('baseline', 15.)
@@ -217,7 +217,7 @@ NLL = NegativeLogLikelihood()
 NLL.set_data(data)
 
 # 设置ra, dec扫描范围
-fov = np.array([-200., 200.], dtype=np.float64) / cons._radian_to_mac
+fov = np.array([-200., 200.], dtype=np.float64) / cons._radian_to_mas
 fov_bins = 20
 
 ra = torch.tensor(np.linspace(fov[0], fov[1], fov_bins))
@@ -280,9 +280,9 @@ print(f"HESSE Matrix:\n{cov_matrix}")
 print("扫描结果:")
 print(f"radius:\t{NLL.amp.earth.radius.item():6.03f} +/- {np.sqrt(cov_matrix[0,0]):6.03f}")
 print(f"temperature:\t{NLL.amp.earth.temperature.item():6.03f} +/- {np.sqrt(cov_matrix[1,1]):6.03f}")
-print(f"ra:\t{best_point[0]*cons._radian_to_mac:6.03f}")
-print(f"dec:\t{best_point[1]*cons._radian_to_mac:6.03f}")
-print(f"scale:\t{NLL.amp.noise.scale.item():6.03e} +/- {np.sqrt(cov_matrix[2,2])*cons._radian_to_mac:6.03e}")
+print(f"ra:\t{best_point[0]*cons._radian_to_mas:6.03f}")
+print(f"dec:\t{best_point[1]*cons._radian_to_mas:6.03f}")
+print(f"scale:\t{NLL.amp.noise.scale.item():6.03e} +/- {np.sqrt(cov_matrix[2,2])*cons._radian_to_mas:6.03e}")
 print(f'NLL: {result.fun}')
 
 # basinhopping在扫描结果周边搜索最优值
@@ -307,17 +307,17 @@ print(f"最小化用时：{(end_time-start_time)*1e3} ms")
 print("拟合结果:")
 print(f"radius:\t{NLL.amp.earth.radius.item():6.03f} +/- {np.sqrt(cov_matrix[0,0]):6.03f}")
 print(f"temperature:\t{NLL.amp.earth.temperature.item():6.03f} +/- {np.sqrt(cov_matrix[1,1]):6.03f}")
-print(f"ra:\t{NLL.amp.earth.ra.item()*cons._radian_to_mac:6.03f} +/- {np.sqrt(cov_matrix[2,2])*cons._radian_to_mac:6.03f}")
-print(f"dec:\t{NLL.amp.earth.dec.item()*cons._radian_to_mac:6.03f} +/- {np.sqrt(cov_matrix[3,3])*cons._radian_to_mac:6.03f}")
-print(f"scale:\t{NLL.amp.noise.scale.item():6.03e} +/- {np.sqrt(cov_matrix[4,4])*cons._radian_to_mac:6.03e}")
+print(f"ra:\t{NLL.amp.earth.ra.item()*cons._radian_to_mas:6.03f} +/- {np.sqrt(cov_matrix[2,2])*cons._radian_to_mas:6.03f}")
+print(f"dec:\t{NLL.amp.earth.dec.item()*cons._radian_to_mas:6.03f} +/- {np.sqrt(cov_matrix[3,3])*cons._radian_to_mas:6.03f}")
+print(f"scale:\t{NLL.amp.noise.scale.item():6.03e} +/- {np.sqrt(cov_matrix[4,4])*cons._radian_to_mas:6.03e}")
 print(f'NLL: {result.fun}')
 
 
 # Draw NLL distribution
-ra_result = NLL.amp.earth.ra.item()*cons._radian_to_mac
-dec_result = NLL.amp.earth.ra.item()*cons._radian_to_mac
-ra_err = np.sqrt(cov_matrix[2,2])*cons._radian_to_mac
-dec_err = np.sqrt(cov_matrix[3,3])*cons._radian_to_mac
+ra_result = NLL.amp.earth.ra.item()*cons._radian_to_mas
+dec_result = NLL.amp.earth.ra.item()*cons._radian_to_mas
+ra_err = np.sqrt(cov_matrix[2,2])*cons._radian_to_mas
+dec_err = np.sqrt(cov_matrix[3,3])*cons._radian_to_mas
 
 ra_grid_numpy = ra_grid.cpu().detach().numpy()
 dec_grid_numpy = dec_grid.cpu().detach().numpy()
@@ -325,7 +325,7 @@ nll_grid = (nll_grid-np.max(nll_grid)).reshape(fov_bins, fov_bins)
 fig, ax = plt.subplots()
 levels = np.arange(np.min(nll_grid)-np.min(nll_grid)*0.001, np.max(nll_grid)+np.max(nll_grid)*0.001, np.fabs(np.max(nll_grid)-np.min(nll_grid))/100.)
 #levels = np.arange(np.min(nll_grid), np.max(nll_grid), np.fabs(np.max(nll_grid)-np.min(nll_grid))/100.)
-trans_map_cont = ax.contourf(ra_grid_numpy*cons._radian_to_mac, dec_grid_numpy*cons._radian_to_mac, nll_grid, levels=levels, cmap = plt.get_cmap("bwr"))
+trans_map_cont = ax.contourf(ra_grid_numpy*cons._radian_to_mas, dec_grid_numpy*cons._radian_to_mas, nll_grid, levels=levels, cmap = plt.get_cmap("bwr"))
 ax.set_xlabel("ra / mas")
 ax.set_ylabel("dec / mas")
 

@@ -21,19 +21,24 @@ class Configuration():
         'quantum_eff': 0.7,     # Quantum efficiency of detector [dimensionless]
         'instrument_eff': 0.05, # Instrument throughput efficiency [dimensionless]
         'nulling_depth': 0.,    # Nulling depth of the instrument [dimensionless, within [0,1) ]
+        'trans_map': 'DualChoppedDestructive' # Nulling transmission map [dimensionless]
     } # {key: torch.Tensor}
     for key, val in _data_property.items():
-        if type(val) != torch.Tensor:
+        if type(val) == str:
+            continue
+        elif type(val) != torch.Tensor:
             _data_property[key] = torch.tensor(float(val))
 
     @classmethod
     def set_property(cls, key: str, val):
-        if type(val) in [float, list, np.ndarray]:
+        if isinstance(val, (float, list, np.ndarray)):
             cls._data_property[key] = torch.tensor(val)
-        elif type(val) == torch.Tensor:
+        elif isinstance(val, torch.Tensor):
             cls._data_property[key] = val
-        elif type(val) == int:
+        elif isinstance(val, int):
             cls._data_property[key] = torch.tensor(float(val))
+        elif isinstance(val, str):
+            cls._data_property[key] = val
         else:
             raise TypeError(f"Configure: Type {type(val)} is not an avaiable type of data ptoperty!")
 
@@ -41,6 +46,8 @@ class Configuration():
     def get_property(cls, key: str) -> torch.Tensor:
         if key not in cls._data_property.keys():
             raise ValueError(f'Configure: Data property {key} not found!')
+        if type(cls._data_property[key]) is str:
+            return cls._data_property[key]
         return cls._data_property[key].detach().clone()
 
     @classmethod
@@ -48,3 +55,7 @@ class Configuration():
         print('All avaiable data property:')
         for name, val in cls._data_property.items():
             print(f"Property {name}:\t{val}")
+
+    @classmethod
+    def init_obs_config(cls, data):
+        pass

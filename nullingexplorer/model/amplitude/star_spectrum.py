@@ -3,17 +3,19 @@ import torch.nn as nn
 from torchquad import Boole
 
 from .base_amplitude import BaseAmplitude
-from nullingexplorer.model.spectrum import UnbinnedBlackBody
-from nullingexplorer.model.transmission import DualChoppedDestructive
-from nullingexplorer.utils import Constants
+from nullingexplorer.model.spectrum import BlackBody
+from nullingexplorer.model.transmission import DualChoppedDestructive, SingleBracewell
+from nullingexplorer.utils import Constants, get_transmission
 from nullingexplorer.utils import Configuration as cfg
 
 class StarBlackBody(BaseAmplitude):
     def __init__(self):
         super(StarBlackBody, self).__init__()
         # Surface Spectrum of the Planet
-        self.spectrum = UnbinnedBlackBody()
-        self.trans_map = DualChoppedDestructive()
+        self.spectrum = BlackBody()
+        #self.trans_map = SingleBracewell()
+        #self.trans_map = DualChoppedDestructive()
+        self.trans_map = get_transmission(cfg.get_property('trans_map'))()
         # Constant parameters
         self.register_buffer('distance', cfg.get_property('distance') * Constants._pc_to_meter) # Distance between target and format (unit: pc)
         self.register_buffer('radius', cfg.get_property('star_radius') * 1e3) # Star radius (unit: kilometer)
@@ -57,8 +59,8 @@ class StarBlackBodyFast(BaseAmplitude):
     def __init__(self):
         super().__init__()
         # Surface Spectrum of the Planet
-        self.spectrum = UnbinnedBlackBody()
-        self.trans_map = DualChoppedDestructive()
+        self.spectrum = BlackBody()
+        self.trans_map = get_transmission(cfg.get_property('trans_map'))()
         # Constant parameters
         self.register_buffer('distance', cfg.get_property('distance') * Constants._pc_to_meter) # Distance between target and format (unit: pc)
         self.register_buffer('radius', cfg.get_property('star_radius') * 1e3) # Star radius (unit: kilometer)

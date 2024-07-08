@@ -13,8 +13,8 @@ torch.set_default_device('cuda:0')
 torch.set_default_dtype(torch.float64)
 from tensordict.prototype import tensorclass
 
-from nullingexplorer.amplitude import *
-from nullingexplorer.instrument import MiYinBasicType
+from nullingexplorer.model.amplitude import *
+from nullingexplorer.model.instrument import MiYinBasicType
 from nullingexplorer.utils import Constants as cons
 from nullingexplorer.utils import Configuration as cfg
 
@@ -23,11 +23,11 @@ phase_bins = 360
 spectrum_range = np.array([5., 25.], dtype=np.float64) * 1e-6
 spectrum_bins = 30
 integral_time = 540.
-earth_location=np.array([100./np.sqrt(2), 100./np.sqrt(2)]) / cons._radian_to_mac
+earth_location=np.array([100./np.sqrt(2), 100./np.sqrt(2)]) / cons._radian_to_mas
 earth_temperature = 285.
-mars_location=np.array([150., 0.]) / cons._radian_to_mac
+mars_location=np.array([150., 0.]) / cons._radian_to_mas
 mars_temperature = 210.
-venus_location=np.array([-50./np.sqrt(2), 50./np.sqrt(2)]) / cons._radian_to_mac
+venus_location=np.array([-50./np.sqrt(2), 50./np.sqrt(2)]) / cons._radian_to_mas
 venus_temperature = 737.
 
 cfg.set_property('baseline', 15.)
@@ -127,7 +127,7 @@ draw_pe = griddata(points, pe_np, (phase_np, wavelength_np), method='cubic')
 # Cross correlation plot
 from nullingexplorer.transmission import DualChoppedDifferential
 
-fov = np.array([-200., 200.], dtype=np.float64) / cons._radian_to_mac
+fov = np.array([-200., 200.], dtype=np.float64) / cons._radian_to_mas
 fov_bins = 200
 
 ra = torch.tensor(np.linspace(fov[0], fov[1], fov_bins))
@@ -155,7 +155,7 @@ draw_cs = griddata(points.cpu().detach().numpy(), cs_plot, (ra_grid_numpy, dec_g
 
 fig, ax = plt.subplots()
 levels = np.arange(np.min(cs_plot)*1.005, np.max(cs_plot)*1.005, (np.max(cs_plot)-np.min(cs_plot))/100.)
-cs_cont = ax.contourf(ra_grid_numpy*cons._radian_to_mac, dec_grid_numpy*cons._radian_to_mac, draw_cs, levels=levels, cmap = plt.get_cmap("bwr_r"))
+cs_cont = ax.contourf(ra_grid_numpy*cons._radian_to_mas, dec_grid_numpy*cons._radian_to_mas, draw_cs, levels=levels, cmap = plt.get_cmap("bwr_r"))
 ax.set_xlabel("ra / mas")
 ax.set_ylabel("dec / mas")
 

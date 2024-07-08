@@ -20,4 +20,4 @@ class SingleBracewell(BaseTransmission):
             wavelength: wavelength of the light (unit: meter)
         '''
         radius, theta = self.to_polar(ra, dec)
-        return 2 * torch.sin(torch.pi * radius * self.baseline / wavelength * torch.cos(theta - data.phi)) ** 2
+        return 2 * torch.sin(torch.pi * radius * self.baseline / wavelength * torch.cos(theta - data.phase)) ** 2

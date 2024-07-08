@@ -45,7 +45,7 @@ class MiYinData:
             self.detach().to_h5(file_h5.name, compression="gzip", compression_opts=9)
             file_h5.close()
 
-    def draw(self, path='.', draw_err=False, save=False, show=False):
+    def draw(self, draw_err=False, save=False, show=False, path='.', name='dataset_distribution'):
         phase_number = self.get_bin_number('phase')
         wl_number = self.get_bin_number('wavelength')
         phase_bins = self.phase.reshape(phase_number, wl_number).cpu().detach().numpy()
@@ -73,7 +73,7 @@ class MiYinData:
             draw_data(ax[1], name='pe_uncertainty', label="Uncertainty")
 
         if save == True:
-            plt.savefig(f"{path}/dataset_distribution.pdf")
+            plt.savefig(f"{path}/{name}.pdf")
         if show == True:
             plt.show()
 

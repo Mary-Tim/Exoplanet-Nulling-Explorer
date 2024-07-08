@@ -4,9 +4,9 @@ from torchquad import Boole, MonteCarlo, Trapezoid
 
 from .base_amplitude import BaseAmplitude
 from nullingexplorer.model.spectrum import TorchQuadBlackBody
-from nullingexplorer.model.transmission import DualChoppedDestructive
+from nullingexplorer.model.transmission import DualChoppedDestructive, SingleBracewell
 from nullingexplorer.model.instrument import MiYinBasicType
-from nullingexplorer.utils import Constants
+from nullingexplorer.utils import Constants, get_transmission
 from nullingexplorer.utils import Configuration as cfg
 
 class LocalZodiacalDust(BaseAmplitude):
@@ -18,7 +18,8 @@ class LocalZodiacalDust(BaseAmplitude):
         super(LocalZodiacalDust, self).__init__()
         # Register models
         self.spectrum = TorchQuadBlackBody()
-        self.trans_map = DualChoppedDestructive()
+        #self.trans_map = SingleBracewell()
+        self.trans_map = get_transmission(cfg.get_property('trans_map'))()
         self.instrument = MiYinBasicType()
         # Constant parameters
         self.register_buffer('target_lon'   , cfg.get_property('target_longitude')     / Constants._radian_to_degree)
@@ -61,7 +62,7 @@ class LocalZodiacalDustFast(BaseAmplitude):
         super().__init__()
         # Register models
         self.spectrum = TorchQuadBlackBody()
-        self.trans_map = DualChoppedDestructive()
+        self.trans_map = get_transmission(cfg.get_property('trans_map'))()
         self.instrument = MiYinBasicType()
         # Constant parameters
         self.register_buffer('target_lon'   , cfg.get_property('target_longitude')     / Constants._radian_to_degree)

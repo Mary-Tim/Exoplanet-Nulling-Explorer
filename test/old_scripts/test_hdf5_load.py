@@ -29,11 +29,11 @@ from nullingexplorer.io.data import MiYinData
 #print(data)
 #print(data["abc"])
 
-diff_data = MiYinData.load('diff_data.hdf5')
+diff_data = MiYinData.load('diff_o3_data.hdf5')
 diff_data = diff_data.flatten()
 
 #print(diff_data)
-#diff_data.draw(path='fig',draw_err=True, show=True)
+diff_data.draw(path='fig',draw_err=False, show=True)
 
 dir(MiYinData)
 

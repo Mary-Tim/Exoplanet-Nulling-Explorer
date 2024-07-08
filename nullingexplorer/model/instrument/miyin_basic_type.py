@@ -36,4 +36,4 @@ class MiYinBasicType(BaseInstrument):
         : param dec: declination of the point (unit: radius)
         : param wavelength: wavelength of the light (unit: meter)
         '''
-        return 0.5 * (1 - self.tanh(cons._radian_to_mac*(torch.sqrt(ra**2+dec**2)-0.5*wavelength/(self.mirror_diameter))))
+        return 0.5 * (1 - self.tanh(cons._radian_to_mas*(torch.sqrt(ra**2+dec**2)-0.5*wavelength/(self.mirror_diameter))))

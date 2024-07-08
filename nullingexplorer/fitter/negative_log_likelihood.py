@@ -47,7 +47,7 @@ class NegativeLogLikelihood(nn.Module, ABC):
         for name, param in self.named_parameters():
             if name in param_name:
                 param.requires_grad = True
-                print(f"fix parameter {name}")
+                print(f"free parameter {name}")
         self.update_param_list()
 
     def set_param_val(self, name, val):
@@ -69,8 +69,10 @@ class NegativeLogLikelihood(nn.Module, ABC):
         if self.dataset == None:
             raise ValueError('Dataset should be initialized before call the NLL!')
         for val, par in zip(params, self.__free_param_list.values()):
-            par.data = torch.tensor(val)
+            par.data.fill_(val)
+            #par.data = torch.tensor(val)
         NLL = self.call_nll()
+        #return NLL.cpu().detach().numpy()
         grad = torch.stack(atg.grad(NLL, self.__free_param_list.values()), dim=0)
         return NLL.cpu().detach().numpy(), grad.cpu().detach().numpy()
 
@@ -85,6 +87,9 @@ class NegativeLogLikelihood(nn.Module, ABC):
                 sub_model = getattr(sub_model, ip)
             delattr(sub_model, path[-1])
             setattr(sub_model, path[-1], val)
+        #for par, val in zip(self.parameters(), args):
+        #for par, val in zip(self.__free_param_list.values(), args):
+        #    par.data.fill_(val.data.item())
         return self.call_nll()
 
     def hessian(self):
@@ -96,9 +101,6 @@ class NegativeLogLikelihood(nn.Module, ABC):
 
     def std_error(self):
         std_err = torch.sqrt(torch.diag(self.inverse_hessian()))
-        for i, name in enumerate(self.__free_param_list.keys()):
-            if name.endswith(('.ra', '.dec')):
-                std_err[i] = std_err[i]*cons._radian_to_mac
         return std_err
 
     @property 

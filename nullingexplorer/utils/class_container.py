@@ -5,6 +5,7 @@ class ModuleRegister(nn.Module):
     def __init_subclass__(cls, cls_type = None, cls_name = None):
         ClassContainer.add_class(cls, cls_type, cls_name)
 
+
 class ClassContainer(object):
     '''
     Singleton, contain all the user defined classes, like instruments, spectra and targets.

@@ -15,15 +15,15 @@ wavelength = torch.tensor(5e-6)
 instrument = MiYinBasicType()
 
 #FoV = lambda mas: 1-sigmod(mas+wavelength/mirror_radius)
-#FoV = lambda mas: 0.5-sigmod(mas-wavelength/mirror_radius*cons._radian_to_mac)/2.
+#FoV = lambda mas: 0.5-sigmod(mas-wavelength/mirror_radius*cons._radian_to_mas)/2.
 
-#FoV = lambda mas: 0.5 * (1 - sigmod(mas*cons._radian_to_mac-wavelength/(mirror_radius*2)*cons._radian_to_mac))
-#FoV = lambda mas: 0.5*(1 - sigmod(mas-wavelength/(mirror_radius*2)*cons._radian_to_mac))
-#print(f"{wavelength/mirror_radius*cons._radian_to_mac:.05f}")
+#FoV = lambda mas: 0.5 * (1 - sigmod(mas*cons._radian_to_mas-wavelength/(mirror_radius*2)*cons._radian_to_mas))
+#FoV = lambda mas: 0.5*(1 - sigmod(mas-wavelength/(mirror_radius*2)*cons._radian_to_mas))
+#print(f"{wavelength/mirror_radius*cons._radian_to_mas:.05f}")
 #print(f"{wavelength/(mirror_radius*2)}")
 
 ra = torch.tensor(np.linspace(0., 3e-6, 500))
 dec = torch.tensor(0.)
-plt.plot(ra.cpu().detach().numpy()*cons._radian_to_mac, instrument.field_of_view(ra, dec, wavelength).cpu().detach().numpy(), 'r-', label='fit')
+plt.plot(ra.cpu().detach().numpy()*cons._radian_to_mas, instrument.field_of_view(ra, dec, wavelength).cpu().detach().numpy(), 'r-', label='fit')
 
 plt.show()

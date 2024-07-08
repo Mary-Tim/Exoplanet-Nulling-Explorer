@@ -23,7 +23,7 @@ phase_bins = 360
 spectrum_range = np.array([5., 25.], dtype=np.float64) * 1e-6
 spectrum_bins = 20
 integral_time = 540.
-earth_location=np.array([100./np.sqrt(2), 100./np.sqrt(2)]) / cons._radian_to_mac
+earth_location=np.array([100./np.sqrt(2), 100./np.sqrt(2)]) / cons._radian_to_mas
 earth_temperature = 285.
 
 cfg.set_property('baseline', 15.)
@@ -119,9 +119,9 @@ NLL = NegativeLogLikelihood()
 NLL.set_data(data)
 # 定义参数的范围约束
 initial_val = [param.item() for param in amp.parameters()]
-bounds = [(6000000, 7000000), (250., 300.), (-80./cons._radian_to_mac, 80./cons._radian_to_mac), (-80./cons._radian_to_mac, 80./cons._radian_to_mac)]
-NLL.amp.earth.ra.data = torch.tensor(65./cons._radian_to_mac)
-NLL.amp.earth.dec.data = torch.tensor(75./cons._radian_to_mac)
+bounds = [(6000000, 7000000), (250., 300.), (-80./cons._radian_to_mas, 80./cons._radian_to_mas), (-80./cons._radian_to_mas, 80./cons._radian_to_mas)]
+NLL.amp.earth.ra.data = torch.tensor(65./cons._radian_to_mas)
+NLL.amp.earth.dec.data = torch.tensor(75./cons._radian_to_mas)
 # fix temperature and 
 
 #objective = lambda params : NLL.objective(params)[0]
@@ -161,5 +161,5 @@ print(f"HESSE Matrix:\n{cov_matrix}")
 print("拟合结果:")
 print(f"radius:\t{amp.earth.radius.item():6.03f} +/- {np.sqrt(cov_matrix[0,0]):6.03f}")
 print(f"temperature:\t{amp.earth.temperature.item():6.03f} +/- {np.sqrt(cov_matrix[1,1]):6.03f}")
-print(f"ra:\t{amp.earth.ra.item()*cons._radian_to_mac:6.03f} +/- {np.sqrt(cov_matrix[2,2])*cons._radian_to_mac:6.03f}")
-print(f"dec:\t{amp.earth.dec.item()*cons._radian_to_mac:6.03f} +/- {np.sqrt(cov_matrix[3,3])*cons._radian_to_mac:6.03f}")
+print(f"ra:\t{amp.earth.ra.item()*cons._radian_to_mas:6.03f} +/- {np.sqrt(cov_matrix[2,2])*cons._radian_to_mas:6.03f}")
+print(f"dec:\t{amp.earth.dec.item()*cons._radian_to_mas:6.03f} +/- {np.sqrt(cov_matrix[3,3])*cons._radian_to_mas:6.03f}")

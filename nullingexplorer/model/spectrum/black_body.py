@@ -5,14 +5,12 @@ from torchquad import Boole
 from nullingexplorer.model.spectrum import BaseSpectrum
 from nullingexplorer.utils import Constants
 
-class UnbinnedBlackBody(BaseSpectrum):
+class BlackBody(nn.Module):
     def __init__(self):
         super().__init__()
         # register constants
         self.register_buffer('c', torch.tensor(Constants._light_speed))
         self.register_buffer('exp_para', torch.tensor(Constants._Planck_constant * Constants._light_speed / Constants._Boltzmann_constant))
-        # register parameters
-        #self.temperature = nn.Parameter(torch.tensor(273.))  # Temperature of object (unit: Kelvin)
 
     def forward(self, temperature, wavelength):
         '''
@@ -23,13 +21,35 @@ class UnbinnedBlackBody(BaseSpectrum):
         : param wavelength: <Tensor> light wavelength (unit: meter)
         '''
         return 2 * self.c / (torch.exp(self.exp_para / (wavelength * temperature)) -1) / torch.pow(wavelength, 4)
+
+
+class UnbinnedBlackBody(BaseSpectrum):
+    def __init__(self):
+        super().__init__()
+        # register constants
+        self.register_buffer('c', torch.tensor(Constants._light_speed))
+        self.register_buffer('exp_para', torch.tensor(Constants._Planck_constant * Constants._light_speed / Constants._Boltzmann_constant))
+        self.black_body = BlackBody()
+
+        # register parameters
+        #self.temperature = nn.Parameter(torch.tensor(273.))  # Temperature of object (unit: Kelvin)
+
+    def forward(self, temperature, data):
+        '''
+        Planck law. 
+        Density of the number of emmision photons by the black body. (unit: meter^{-1})
+
+        : param temperature: <Tensor> Temperature of black body (unit: Kelvin)
+        : param wavelength: <Tensor> light wavelength (unit: meter)
+        '''
+        return self.black_body(temperature, data.wavelength)
         #return 2 * self.c / torch.pow(wavelength, 4) / (torch.exp(self.exp_para / (wavelength * temperature)) -1)
 
 class BinnedBlackBody(BaseSpectrum):
     def __init__(self):
         super().__init__()
         # module
-        self.unbinned_black_body = UnbinnedBlackBody()
+        self.unbinned_black_body = BlackBody()
         # register constants
         self.register_buffer('c', torch.tensor(Constants._light_speed))
         self.register_buffer('exp_para', torch.tensor(Constants._Planck_constant * Constants._light_speed / Constants._Boltzmann_constant))
@@ -51,7 +71,7 @@ class TorchQuadBlackBody(BaseSpectrum):
     def __init__(self):
         super().__init__()
         # module
-        self.unbinned_black_body = UnbinnedBlackBody()
+        self.unbinned_black_body = BlackBody()
         # register constants
         self.register_buffer('c', torch.tensor(Constants._light_speed))
         self.register_buffer('exp_para', torch.tensor(Constants._Planck_constant * Constants._light_speed / Constants._Boltzmann_constant))
