@@ -23,10 +23,10 @@ class PlanetBlackBody(BaseAmplitude):
         # Free parameters
         self.radius = nn.Parameter(torch.tensor(6371.) * 1.e3) # Planet radius (unit: kilometer)
         self.temperature = nn.Parameter(torch.tensor(273.))  # Temperature of planet (unit: Kelvin)
-        self.ra  = nn.Parameter(torch.tensor(50.)) # Right ascension relatived to the star (unit: radian)
-        self.dec = nn.Parameter(torch.tensor(50.)) # Declination relatived to the star (unit: radian)
+        self.ra  = nn.Parameter(torch.tensor(50.)) # Right ascension relative to the star (unit: radian)
+        self.dec = nn.Parameter(torch.tensor(50.)) # Declination relative to the star (unit: radian)
 
-        # Boundarys of parameters
+        # Boundary of parameters
         self.register_buffer('bound_radius', torch.tensor([1.e6, 1.e7]))
         self.register_buffer('bound_temperature', torch.tensor([100., 800.]))
         self.register_buffer('bound_ra', torch.tensor([-torch.pi, torch.pi]))
@@ -48,15 +48,15 @@ class RelativePlanetBlackBody(BaseAmplitude):
         self.register_buffer('distance', cfg.get_property('distance') * cons._pc_to_meter) # Distance between target and format (unit: pc)
         self.register_buffer('e_rad', torch.tensor(6371.) * 1e3) # Earth radius (unit: kilometer)
         self.register_buffer('e_temp', torch.tensor(285.)) # Earth temperature (unit: Kelvin)
-        self.register_buffer('e_mas', torch.tensor(100.) / cons._radian_to_mas) # Earth-Sun angular seperation at 10 pc (unit: mas)
+        self.register_buffer('e_mas', torch.tensor(100.) / cons._radian_to_mas) # Earth-Sun angular separation at 10 pc (unit: mas)
 
         # Free parameters
         self.r_radius = nn.Parameter(torch.tensor(1.)) # Relative planet radius (unit: dimensionless)
         self.r_temperature = nn.Parameter(torch.tensor(1.))  # Relative temperature of planet (unit: dimensionless)
-        self.r_ra  = nn.Parameter(torch.tensor(1.)) # Relative right ascension relatived to the star (unit: dimensionless)
-        self.r_dec = nn.Parameter(torch.tensor(1.)) # Relative declination relatived to the star (unit: dimensionless)
+        self.r_ra  = nn.Parameter(torch.tensor(1.)) # Relative right ascension relative to the star (unit: dimensionless)
+        self.r_dec = nn.Parameter(torch.tensor(1.)) # Relative declination relative to the star (unit: dimensionless)
 
-        # Boundarys of parameters
+        # Boundary of parameters
         self.register_buffer('bound_r_radius', torch.tensor([0.1, 5]))
         self.register_buffer('bound_r_temperature', torch.tensor([0.1, 5]))
         self.register_buffer('bound_r_ra', torch.tensor([-5, 5]))

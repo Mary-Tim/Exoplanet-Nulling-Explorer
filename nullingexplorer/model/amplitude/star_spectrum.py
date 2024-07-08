@@ -20,7 +20,7 @@ class StarBlackBody(BaseAmplitude):
         self.register_buffer('distance', cfg.get_property('distance') * Constants._pc_to_meter) # Distance between target and format (unit: pc)
         self.register_buffer('radius', cfg.get_property('star_radius') * 1e3) # Star radius (unit: kilometer)
         self.register_buffer('temperature', cfg.get_property('star_temperature')) # Star radius (unit: kilometer)
-        # Calculate stellat leak
+        # Calculate stellar leak
         self.register_buffer('sun_light', torch.tensor([], dtype=torch.float64))  
 
     def init_sun_light(self, data) -> torch.Tensor:
@@ -53,7 +53,7 @@ class StarBlackBody(BaseAmplitude):
         # TODO: Consider the field-of-view of instrument, using Sigmod?
 
     def star_luminosity(self):
-        return torch.tensor(self.raduis**2 * (self.temperature / 5780.)**4)
+        return torch.tensor(self.radius**2 * (self.temperature / 5780.)**4)
 
 class StarBlackBodyFast(BaseAmplitude):
     def __init__(self):
@@ -65,7 +65,7 @@ class StarBlackBodyFast(BaseAmplitude):
         self.register_buffer('distance', cfg.get_property('distance') * Constants._pc_to_meter) # Distance between target and format (unit: pc)
         self.register_buffer('radius', cfg.get_property('star_radius') * 1e3) # Star radius (unit: kilometer)
         self.register_buffer('temperature', cfg.get_property('star_temperature')) # Star radius (unit: kilometer)
-        # Calculate stellat leak
+        # Calculate stellar leak
         self.register_buffer('sun_light', torch.tensor([], dtype=torch.float64))  
 
     def init_sun_light(self, data) -> torch.Tensor:
@@ -100,4 +100,4 @@ class StarBlackBodyFast(BaseAmplitude):
         # TODO: Consider the field-of-view of instrument, using Sigmod?
 
     def star_luminosity(self):
-        return torch.tensor(self.raduis**2 * (self.temperature / 5780.)**4)
+        return torch.tensor(self.radius**2 * (self.temperature / 5780.)**4)

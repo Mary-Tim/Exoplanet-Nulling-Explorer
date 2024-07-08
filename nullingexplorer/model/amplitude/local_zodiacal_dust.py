@@ -11,7 +11,7 @@ from nullingexplorer.utils import Configuration as cfg
 
 class LocalZodiacalDust(BaseAmplitude):
     '''
-    The photon emmision by local-zodiacal dust
+    The photon emission by local-zodiacal dust
     Reference to LIFE-II (doi:10.1051/0004-6361/202141958)
     '''
     def __init__(self):
@@ -30,8 +30,8 @@ class LocalZodiacalDust(BaseAmplitude):
         self.register_buffer('relative_lon', torch.pi - (self.target_lon - self.formation_lon))
         self.register_buffer('sun_radius_au', torch.tensor(6.955e8/Constants._au_to_meter))
         self.register_buffer('formation_location_au', torch.tensor(1.5))
-        self.register_buffer('sun_tempurature', torch.tensor(5772.))
-        self.register_buffer('effective_tempurature', torch.tensor(265.))
+        self.register_buffer('sun_temperature', torch.tensor(5772.))
+        self.register_buffer('effective_temperature', torch.tensor(265.))
         self.register_buffer('optical_depth', torch.tensor(4.e-8))
         self.register_buffer('dust_albedo', torch.tensor(0.22))
 
@@ -39,10 +39,10 @@ class LocalZodiacalDust(BaseAmplitude):
         self.register_buffer('local_zodi', torch.tensor([], dtype=torch.float64))  
 
     def init_local_zodi(self, data) -> torch.Tensor:
-        dust_emmision   = self.spectrum(self.effective_tempurature, data)
-        dust_reflection = self.dust_albedo * self.spectrum(self.sun_tempurature, data) * (self.sun_radius_au / self.formation_location_au)**2
+        dust_emission   = self.spectrum(self.effective_temperature, data)
+        dust_reflection = self.dust_albedo * self.spectrum(self.sun_temperature, data) * (self.sun_radius_au / self.formation_location_au)**2
         fov_area = torch.pi * (0.5*data.wavelength/self.mirror_diameter)**2
-        self.local_zodi.data = self.optical_depth * (dust_emmision + dust_reflection) \
+        self.local_zodi.data = self.optical_depth * (dust_emission + dust_reflection) \
                                 * torch.sqrt(torch.pi / torch.arccos(torch.cos(self.relative_lon) * torch.cos(self.target_lat))\
                                              / (torch.sin(self.target_lat)**2 + 0.36 * (data.wavelength/11e-6)**(-0.8)*torch.cos(self.target_lat)**2)) * fov_area
 
@@ -55,7 +55,7 @@ class LocalZodiacalDust(BaseAmplitude):
 
 class LocalZodiacalDustFast(BaseAmplitude):
     '''
-    The photon emmision by local-zodiacal dust
+    The photon emission by local-zodiacal dust
     Reference to LIFE-II (doi:10.1051/0004-6361/202141958)
     '''
     def __init__(self):
@@ -73,8 +73,8 @@ class LocalZodiacalDustFast(BaseAmplitude):
         self.register_buffer('relative_lon', torch.pi - (self.target_lon - self.formation_lon))
         self.register_buffer('sun_radius_au', torch.tensor(6.955e8/Constants._au_to_meter))
         self.register_buffer('formation_location_au', torch.tensor(1.5))
-        self.register_buffer('sun_tempurature', torch.tensor(5772.))
-        self.register_buffer('effective_tempurature', torch.tensor(265.))
+        self.register_buffer('sun_temperature', torch.tensor(5772.))
+        self.register_buffer('effective_temperature', torch.tensor(265.))
         self.register_buffer('optical_depth', torch.tensor(4.e-8))
         self.register_buffer('dust_albedo', torch.tensor(0.22))
 
@@ -84,10 +84,10 @@ class LocalZodiacalDustFast(BaseAmplitude):
     def init_local_zodi(self, data) -> torch.Tensor:
         phase_num = data.get_bin_number('phase')
         data_0 = data.select_data('phase', data.get_bins('phase')[0])
-        dust_emmision   = self.spectrum(self.effective_tempurature, data_0).repeat(phase_num)
-        dust_reflection = self.dust_albedo * self.spectrum(self.sun_tempurature, data_0).repeat(phase_num) * (self.sun_radius_au / self.formation_location_au)**2
+        dust_emission   = self.spectrum(self.effective_temperature, data_0).repeat(phase_num)
+        dust_reflection = self.dust_albedo * self.spectrum(self.sun_temperature, data_0).repeat(phase_num) * (self.sun_radius_au / self.formation_location_au)**2
         fov_area = torch.pi * (0.5*data.wavelength/self.mirror_diameter)**2
-        self.local_zodi.data = self.optical_depth * (dust_emmision + dust_reflection) \
+        self.local_zodi.data = self.optical_depth * (dust_emission + dust_reflection) \
                                 * torch.sqrt(torch.pi / torch.arccos(torch.cos(self.relative_lon) * torch.cos(self.target_lat))\
                                              / (torch.sin(self.target_lat)**2 + 0.36 * (data.wavelength/11e-6)**(-0.8)*torch.cos(self.target_lat)**2)) * fov_area
 

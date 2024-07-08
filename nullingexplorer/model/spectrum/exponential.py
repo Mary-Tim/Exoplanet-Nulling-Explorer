@@ -9,13 +9,12 @@ class Exponential(nn.Module):
     def __init__(self):
         super().__init__()
         # register constants
-        self.register_buffer('c', torch.tensor(Constants._light_speed))
         self.register_buffer('exp_para', torch.tensor(Constants._Planck_constant * Constants._light_speed / Constants._Boltzmann_constant))
 
     def forward(self, temperature, wavelength):
         '''
         Planck law. 
-        Density of the number of emmision photons by the black body. (unit: meter^{-1})
+        Density of the number of emission photons by the black body. (unit: meter^{-1})
 
         : param temperature: <Tensor> Temperature of black body (unit: Kelvin)
         : param wavelength: <Tensor> light wavelength (unit: meter)

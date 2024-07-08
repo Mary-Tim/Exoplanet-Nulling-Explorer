@@ -14,7 +14,7 @@ class DualChoppedDestructive(BaseTransmission):
 
     def forward(self, ra, dec, wavelength, data):
         '''
-        Transmission map of a dual-chooped Bracewell nuller
+        Transmission map of a dual-chopped Bracewell nuller
 
         : param ra: right ascension of the point (unit: radius)
         : param dec: declination of the point (unit: radius)
@@ -40,7 +40,7 @@ class DualChoppedDifferential(BaseTransmission):
 
     def forward(self, ra, dec, wavelength, data):
         '''
-        Transmission map of a dual-chooped Bracewell nuller
+        Transmission map of a dual-chopped Bracewell nuller
 
         : param ra: right ascension of the point (unit: radius)
         : param dec: declination of the point (unit: radius)

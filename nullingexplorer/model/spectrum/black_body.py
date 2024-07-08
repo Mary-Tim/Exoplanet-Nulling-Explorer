@@ -15,7 +15,7 @@ class BlackBody(nn.Module):
     def forward(self, temperature, wavelength):
         '''
         Planck law. 
-        Density of the number of emmision photons by the black body. (unit: meter^{-1})
+        Density of the number of emission photons by the black body. (unit: meter^{-1})
 
         : param temperature: <Tensor> Temperature of black body (unit: Kelvin)
         : param wavelength: <Tensor> light wavelength (unit: meter)
@@ -37,7 +37,7 @@ class UnbinnedBlackBody(BaseSpectrum):
     def forward(self, temperature, data):
         '''
         Planck law. 
-        Density of the number of emmision photons by the black body. (unit: meter^{-1})
+        Density of the number of emission photons by the black body. (unit: meter^{-1})
 
         : param temperature: <Tensor> Temperature of black body (unit: Kelvin)
         : param wavelength: <Tensor> light wavelength (unit: meter)
@@ -59,7 +59,7 @@ class BinnedBlackBody(BaseSpectrum):
     def forward(self, temperature, data):
         '''
         Planck law. 
-        Number of emmision photons by the black body in each wavelength bin. (unit: meter^{-1})
+        Number of emission photons by the black body in each wavelength bin. (unit: meter^{-1})
 
         : param data: dict of dataset, content:
             wavelength: <Tensor> Center value of each wavelength bin (unit: meter)
@@ -85,10 +85,10 @@ class TorchQuadBlackBody(BaseSpectrum):
     def forward(self, temperature, data):
         '''
         Planck law. 
-        Number of emmision photons by the black body in each wavelength bin. (unit: meter^{-1})
+        Number of emission photons by the black body in each wavelength bin. (unit: meter^{-1})
         Evaluated by torchquad.
 
-        : param data: torchclass of dataset, content:
+        : param data: tensorclass of dataset, content:
             wavelength: <Tensor> Center value of each wavelength bin (unit: meter)
             wl_width: <Tensor> Width of each wavelength bin (unit: meter)
         '''

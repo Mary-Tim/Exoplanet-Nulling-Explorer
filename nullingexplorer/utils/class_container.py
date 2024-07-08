@@ -62,8 +62,8 @@ class ClassContainer(object):
         #print(f"Register {cls_type} class {cls_name}")        
 
     @classmethod
-    def print_avaiable_class(cls):
-        print('All avaiable modules:')
+    def print_available_class(cls):
+        print('All available modules:')
         for type_name, atype in cls._class_list.items():
             print(f"Module {type_name}:\t{list(atype.keys())}")
 
@@ -90,7 +90,7 @@ def get_transmission(cls_name = None):
 
 # test
 def main():
-    ClassContainer.print_avaiable_class()
+    ClassContainer.print_available_class()
     overallinst = ClassContainer.get_class("instrument", "overall")()
     overallinst.test()
 

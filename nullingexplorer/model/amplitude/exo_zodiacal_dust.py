@@ -11,7 +11,7 @@ from nullingexplorer.utils import Configuration as cfg
 
 class ExoZodiacalDust(BaseAmplitude):
     '''
-    The photon emmision by exo-zodiacal dust
+    The photon emission by exo-zodiacal dust
     Reference to Kennedy 2015 (doi:10.1088/0067-0049/216/2/23)
     '''
     def __init__(self):
@@ -85,7 +85,7 @@ class ExoZodiacalDust(BaseAmplitude):
 
 class ExoZodiacalDustFast(BaseAmplitude):
     '''
-    The photon emmision by exo-zodiacal dust
+    The photon emission by exo-zodiacal dust
     Reference to Kennedy 2015 (doi:10.1088/0067-0049/216/2/23)
     '''
     def __init__(self):

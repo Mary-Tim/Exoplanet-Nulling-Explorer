@@ -40,7 +40,7 @@ class Configuration():
         elif isinstance(val, str):
             cls._data_property[key] = val
         else:
-            raise TypeError(f"Configure: Type {type(val)} is not an avaiable type of data ptoperty!")
+            raise TypeError(f"Configure: Type {type(val)} is not an available type of data property!")
 
     @classmethod
     def get_property(cls, key: str) -> torch.Tensor:
@@ -51,8 +51,8 @@ class Configuration():
         return cls._data_property[key].detach().clone()
 
     @classmethod
-    def print_avaiable_data_property(cls):
-        print('All avaiable data property:')
+    def print_available_data_property(cls):
+        print('All available data property:')
         for name, val in cls._data_property.items():
             print(f"Property {name}:\t{val}")
 
