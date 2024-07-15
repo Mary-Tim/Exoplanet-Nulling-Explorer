@@ -1,13 +1,70 @@
 import torch
-from tensordict.prototype import tensorclass
 from tensordict import PersistentTensorDict
+from tensordict import TensorDict
 
 import matplotlib.pyplot as plt
 import mplhep
 plt.style.use(mplhep.style.LHCb2)
 
-@tensorclass
-class MiYinData:
+from nullingexplorer.generator import ObservationCreator
+
+class DataHandler():
+    def __init__(self, data) -> None:
+        self.__data = data
+
+    #def __getattr__(self, name: str) -> torch.Any:
+    #    return self.__data[name]
+
+    #def __setattr__(self, name: str, value: torch.Any) -> None:
+    #    self.__data[name] = value
+
+    @property
+    def data(self) -> TensorDict:
+        return self.__data
+
+    @data.setter
+    def data(self, data: TensorDict) -> None:
+        self.__data = data
+
+    def save(self, path: str, file_name='data.hdf5'):
+        if not path.endswith(('.hdf5', '.h5',)):
+            if path.endswith('/'):
+                path = f"{path}{file_name}"
+            else:
+                path = f"{path}/{file_name}"
+                
+        with open(path, "w") as file_h5:
+            self.__data.detach().to_h5(file_h5.name, compression="gzip", compression_opts=9)
+            file_h5.close()
+
+    def load(self, path: str):
+        data_h5 = PersistentTensorDict.from_h5(path)
+        self.__data = data_h5.copy()
+        data_h5.close()
+
+    def diff_data(self, obs_creator: ObservationCreator):
+        if self.data == None:
+            raise ValueError("Data is not loaded yet.")
+        diff_data = self.data.reshape(obs_creator.obs_num,obs_creator.spec_num,obs_creator.mod_num)[:,:,0]
+        data_mod3 = self.data.reshape(obs_creator.obs_num,obs_creator.spec_num,obs_creator.mod_num)[:,:,0]
+        data_mod4 = self.data.reshape(obs_creator.obs_num,obs_creator.spec_num,obs_creator.mod_num)[:,:,1]
+        diff_data['photon_electron'] = (data_mod3['photon_electron'] - data_mod4['photon_electron']).reshape(obs_creator.obs_num,obs_creator.spec_num)
+        diff_data['pe_uncertainty'] = torch.sqrt(data_mod3['photon_electron'] + data_mod4['photon_electron']).reshape(obs_creator.obs_num,obs_creator.spec_num)
+        diff_data['pe_uncertainty'][diff_data['pe_uncertainty'] == 0] = 1e10
+        self.data = diff_data
+        return diff_data
+
+    def reshape(self, obs_creator: ObservationCreator):
+        if self.data == None:
+            raise ValueError("Data is not loaded yet.")
+        if obs_creator.mod_num > 1:
+            self.data = self.data.reshape(obs_creator.obs_num,obs_creator.spec_num,obs_creator.mod_num)
+        else:
+            self.data = self.data.reshape(obs_creator.obs_num,obs_creator.spec_num)
+        return self.data
+        
+
+    '''
     phase: torch.Tensor
     wavelength: torch.Tensor
     wl_width: torch.Tensor
@@ -98,3 +155,4 @@ class MiYinData:
             setattr(data, key, data_h5[key])
         data_h5.close()
         return data
+'''

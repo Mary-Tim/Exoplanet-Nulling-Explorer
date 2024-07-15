@@ -26,7 +26,7 @@ class MiYinBasicType(BaseInstrument):
         : param data: dict of dataset, content:
             integral_time: Integral time of each data point (unit: second)
         '''
-        return self.total_eff * data.integral_time
+        return self.total_eff * data['intg_time']
 
     def field_of_view(self, ra, dec, wavelength):
         '''
