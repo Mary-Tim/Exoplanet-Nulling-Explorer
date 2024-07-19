@@ -48,11 +48,11 @@ class DataHandler():
         diff_data = self.data.reshape(obs_creator.obs_num,obs_creator.spec_num,obs_creator.mod_num)[:,:,0]
         data_mod3 = self.data.reshape(obs_creator.obs_num,obs_creator.spec_num,obs_creator.mod_num)[:,:,0]
         data_mod4 = self.data.reshape(obs_creator.obs_num,obs_creator.spec_num,obs_creator.mod_num)[:,:,1]
-        diff_data['photon_electron'] = (data_mod3['photon_electron'] - data_mod4['photon_electron']).reshape(obs_creator.obs_num,obs_creator.spec_num)
-        diff_data['pe_uncertainty'] = torch.sqrt(data_mod3['photon_electron'] + data_mod4['photon_electron']).reshape(obs_creator.obs_num,obs_creator.spec_num)
+        diff_data['photon_electron'] = (data_mod3['photon_electron'] - data_mod4['photon_electron'])
+        diff_data['pe_uncertainty'] = torch.sqrt(data_mod3['photon_electron'] + data_mod4['photon_electron'])
         diff_data['pe_uncertainty'][diff_data['pe_uncertainty'] == 0] = 1e10
-        self.data = diff_data
-        return diff_data
+        self.data = diff_data.flatten()
+        return self.data
 
     def reshape(self, obs_creator: ObservationCreator):
         if self.data == None:

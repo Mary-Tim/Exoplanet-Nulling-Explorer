@@ -16,8 +16,9 @@ class NegativeLogLikelihood(nn.Module, ABC):
         self.dataset = data
 
         self.__free_param_list = {}
+        self.create_boundary()
         self.update_param_list()
-        self.__param_list = self.__free_param_list
+        self.__param_list = self.__free_param_list.copy()
 
         print("Initial Parameters:")
         for name, param in self.__param_list.items():
@@ -25,12 +26,53 @@ class NegativeLogLikelihood(nn.Module, ABC):
 
     def update_param_list(self):
         self.__free_param_list = {}
+        self.__boundary = {}
         for name, param in self.named_parameters():
             if param.requires_grad == True:
                 self.__free_param_list[name] = param
+
+        self.update_boundary()
+    
+    def create_boundary(self):
+        self.__total_boundary = {}
+        for key, val in self.named_parameters():
+            sub_model = self
+            path = key.split('.')
+            for ip in path[:-1]:
+                sub_model = getattr(sub_model, ip)
+                if hasattr(sub_model, 'boundary'):
+                    self.__total_boundary[key] = sub_model.boundary[path[-1]]
+                    print(f"Boundary: {key}, {self.__total_boundary[key]}")
+    
+    def update_boundary(self):
+        self.__boundary = {}
+        for key in self.__free_param_list.keys():
+            self.__boundary[key] = self.__total_boundary[key]
+
+    def get_boundary(self):
+        return [tuple(val.cpu().detach().numpy()) for val in self.__boundary.values()]
     
     def get_param_values(self):
         return [param.item() for param in self.__free_param_list.values()]
+
+    @property
+    def name_of_params(self):
+        return self.__free_param_list.keys()
+
+    @property
+    def num_of_params(self):
+        return len(self.__free_param_list)
+
+    def config_fit_params(self, params:list):
+        for key in params:
+            if key not in self.__free_param_list.keys():
+                print(f"Warning! Cannot find parameter {key} in fit model, skip it.")
+                params.remove(key)
+        for key in self.__free_param_list.keys():
+            if key in params:
+                self.free_param(key)
+            else:
+                self.fix_param(key)
     
     def fix_param(self, param_name):
         if type(param_name) == str:
@@ -38,7 +80,12 @@ class NegativeLogLikelihood(nn.Module, ABC):
         for name, param in self.named_parameters():
             if name in param_name:
                 param.requires_grad = False
-                print(f"fix parameter {name}")
+                #print(f"fix parameter {name}")
+        self.update_param_list()
+
+    def free_all_params(self):
+        for name, param in self.named_parameters():
+            param.requires_grad = True
         self.update_param_list()
 
     def free_param(self, param_name):
@@ -47,14 +94,14 @@ class NegativeLogLikelihood(nn.Module, ABC):
         for name, param in self.named_parameters():
             if name in param_name:
                 param.requires_grad = True
-                print(f"free parameter {name}")
+                #print(f"free parameter {name}")
         self.update_param_list()
 
     def set_param_val(self, name, val):
         if type(val) == torch.Tensor:
-            self.__param_list[name].data = val
+            self.__free_param_list[name].data = val
         elif type(val) in [int, float, list, np.float32, np.float64, np.ndarray]:
-            self.__param_list[name].data = torch.tensor(val)
+            self.__free_param_list[name].data = torch.tensor(val)
         else:
             raise TypeError(f"Type {type(val)} not supported!")
 

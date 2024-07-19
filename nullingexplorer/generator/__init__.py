@@ -1,1 +1,2 @@
 from .observation_creator import ObservationCreator
+from .amplitude_creator import AmplitudeCreator

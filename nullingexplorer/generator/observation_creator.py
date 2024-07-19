@@ -3,6 +3,7 @@ import yaml
 import numpy as np
 
 from tensordict import TensorDict
+from nullingexplorer.utils import Configuration as cfg
 
 class ObservationCreator():
     def __init__(self):
@@ -58,6 +59,10 @@ class ObservationCreator():
     def generate(self) -> TensorDict:
         if not self.__config:
             raise ValueError('Config is not loaded.')
+        
+        if self.__config.get('Configuration'):
+            for key, val in self.__config['Configuration'].items():
+                cfg.set_property(key, val)
 
         obs_num = self.__obs_gen.call_observation(self.__config['Observation'])
         spec_num = self.__spec_gen.call_spectrum(self.__config['Spectrum'])

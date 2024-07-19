@@ -1,2 +1,2 @@
-from .data import *
-from .fit_result import *
+from .data import DataHandler
+from .fit_result import FitResult
