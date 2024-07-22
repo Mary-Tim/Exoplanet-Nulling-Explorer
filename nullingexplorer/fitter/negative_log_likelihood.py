@@ -101,7 +101,7 @@ class NegativeLogLikelihood(nn.Module, ABC):
         if type(val) == torch.Tensor:
             self.__free_param_list[name].data = val
         elif type(val) in [int, float, list, np.float32, np.float64, np.ndarray]:
-            self.__free_param_list[name].data = torch.tensor(val)
+            self.__free_param_list[name].data.fill_(val)
         else:
             raise TypeError(f"Type {type(val)} not supported!")
 

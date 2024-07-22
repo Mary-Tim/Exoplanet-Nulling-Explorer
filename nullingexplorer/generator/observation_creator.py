@@ -168,7 +168,7 @@ class ObsGenerator():
         if bl_config['Type'] == 'Constant':
             self.baseline = np.ones(self.obs_num) * bl_config['Value']
         elif bl_config['Type'] in self.distribution.keys():
-            self.baseline = self.distribution[bl_config['Type']](bl_config['Low'], bl_config['High'], self.phase_num)
+            self.baseline = self.distribution[bl_config['Type']](bl_config['Low'], bl_config['High'], self.obs_num)
         else:
             raise ValueError('Baseline type is not supported.')
 

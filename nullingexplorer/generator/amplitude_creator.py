@@ -24,7 +24,7 @@ class MetaAmplitude(type):
         return self.obj
 
     def load(self, config):
-        print("Generate Amplitude")
+        #print("Generate Amplitude")
         if isinstance(config, dict):
             self.config = config
         if isinstance(config, str):

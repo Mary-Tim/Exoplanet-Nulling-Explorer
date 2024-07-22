@@ -14,10 +14,15 @@ from nullingexplorer.utils import Constants as cons
 class FitResult():
     def __init__(self, output_path = None):
         self.__result = {}
-        self.__unit = {'ra': 'mas',
-                       'dec': 'mas',
-                       'radius': 'kilometer',
-                       'temperature': 'Kelvin'
+        self.__unit = {
+                        'ra': 'mas',
+                        'dec': 'mas',
+                        'radius': 'kilometer',
+                        'temperature': 'Kelvin',
+                        'r_ra': '100 * mas',
+                        'r_dec': '100 * mas',
+                        'r_radius': '6371e3 * kilometer',
+                        'r_temperature': '285 * Kelvin'
                        }
         self.nll_model = None
         start_time = datetime.now()
@@ -27,6 +32,7 @@ class FitResult():
             self.__output_path = f"{output_path}_{start_time.strftime('%Y%m%d_%H%M%S')}"
         if not os.path.exists(self.__output_path):
             os.mkdir(self.__output_path)
+        print(f"The result will be saved to: {self.__output_path}")
 
     def load_fit_result(self, nll_model, scipy_result: optimize.OptimizeResult):
     #def save_fit_result(self, nll_model: NegativeLogLikelihood, scipy_result: optimize.OptimizeResult):
@@ -139,7 +145,7 @@ class FitResult():
         n_sigma = -stats.norm.ppf(stats.chi2.sf(delta_2ll,df=ndf,loc=0,scale=1)/2)
         return n_sigma
 
-    def draw_scan_result(self, position_name=[]):
+    def draw_scan_result(self, position_name=[], file_name='fitter_ramdon', show=False):
         if 'scan_nll' not in self.__result.keys():
             raise KeyError('Scan result not found.')
 
@@ -148,7 +154,7 @@ class FitResult():
         scat = ax.scatter(line, self.__result['scan_nll'], s=30)
         ax.set_xlabel("Task")
         ax.set_ylabel("NLL")
-        plt.savefig(f'{self.__output_path}/NLL.pdf')
+        plt.savefig(f'{self.__output_path}/{file_name}_NLL.pdf')
 
         if len(position_name) != 0:
             ra_index  = self.__result['param_name'].index(position_name[0][position_name[0].find(".")+1:])
@@ -170,9 +176,7 @@ class FitResult():
             fig.colorbar(scat,ax=ax,orientation='vertical',label='NLL')
             ax.set_xlabel("ra")
             ax.set_ylabel("dec")
-            plt.savefig(f'{self.__output_path}/fitter_random.pdf')
+            plt.savefig(f'{self.__output_path}/{file_name}_location.pdf')
 
-            plt.show()
-
-
-        
+            if show:
+                plt.show()

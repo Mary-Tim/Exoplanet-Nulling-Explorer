@@ -6,16 +6,13 @@ import matplotlib.pyplot as plt
 import mplhep
 plt.style.use(mplhep.style.LHCb2)
 from tqdm import tqdm
+from scipy.interpolate import interpn
 
 import torch
-import torch.nn as nn
-import torch.autograd as atg
 torch.set_default_device('cuda:0')
 torch.set_default_dtype(torch.float64)
 
 from nullingexplorer.generator import PoissonSignificance
-from nullingexplorer.utils import Constants as cons
-from nullingexplorer.utils import Configuration as cfg
 
 # Observation plan
 obs_config = {
@@ -27,7 +24,7 @@ obs_config = {
     },
     'Observation':{
         'ObsNumber': 360,
-        'IntegrationTime': 100,  # unit: second
+        'IntegrationTime': 1,  # unit: second
         'ObsMode': [1, -1],  # [1] or [-1] or [1, -1]
         'Phase':{
             'Start' : 0.,
@@ -35,7 +32,10 @@ obs_config = {
         },
         'Baseline':{
             'Type': 'Constant',
-            'Value': 15.,  # unit: meter
+            'Value': 30.,  # unit: meter
+            #'Type': 'Linear',
+            #'Low': 10.,  # unit: meter
+            #'High': 50.,  # unit: meter
         },
     },
     'Configuration':{
@@ -101,12 +101,40 @@ bkg_amp_config = {
     }
 }
 
+intg_time = np.linspace(1., 200., 100)
+
 sig_poisson = PoissonSignificance()
 sig_poisson.obs_config = obs_config
-sig_poisson.sig_amp_config = sig_amp_config
-sig_poisson.bkg_amp_config = bkg_amp_config
 
+sig_poisson.sig_amp_config = sig_amp_config
 sig_pe = sig_poisson.gen_sig_pe()
+
+sig_poisson.bkg_amp_config = bkg_amp_config
 bkg_pe = sig_poisson.gen_bkg_pe()
 
-print(f"SNR: {sig_poisson.get_significance(sig_pe, bkg_pe):.3f}")
+def sig_point(time):
+    return sig_poisson.get_significance(sig_pe*time, bkg_pe*time)
+
+significance = np.zeros(len(intg_time))
+
+for i, time in tqdm(enumerate(intg_time), total=len(intg_time)):
+    significance[i] = sig_point(time)
+
+fig, ax = plt.subplots()
+trans_map_cont = ax.plot(intg_time, significance, color='black')
+
+ax.set_xlabel("Time / s")
+ax.set_ylabel("Significance")
+
+aimed_signifi = 10.
+
+def aimed_time(signi):
+    return np.power(signi/np.sqrt(sig_point(1.0).cpu().detach().numpy()), 2)
+
+print(f"Integral time for 10$\,\sigma$: {aimed_time(aimed_signifi):.2f} s")
+
+plt.show()
+
+
+
+

@@ -94,7 +94,7 @@ class ENEFitter():
 
         return result
 
-    def precision_search(self, fit_params = [], *args, **kwargs):
+    def precision_search(self, init_val=None, fit_params = [], *args, **kwargs):
         """
         Performs a precise search using the Basin Hopping algorithm.
 
@@ -108,12 +108,15 @@ class ENEFitter():
         The result of executing the scipy.optimize.basinhopping function.
         """
         print("Precision searching...")
+        if init_val is None:
+            init_val = [val.data.item() for val in self.NLL.free_param_list.values()]
         if len(fit_params) != 0:
             self.NLL.config_fit_params(fit_params)
-        result = self.scipy_basinhopping(*args, **kwargs)
+        result = self.scipy_basinhopping(init_val=init_val, *args, **kwargs)
         return result
 
     def search_planet(self, amp_name:str, draw=False, std_err=False, *args, **kwargs):
+        print(f"Searching planet {amp_name}...")
         self.NLL.free_all_params()
         name_of_params = self.NLL.name_of_params
         planet_params = []
@@ -123,7 +126,10 @@ class ENEFitter():
         if len(planet_params) == 0:
             raise KeyError(f"Planet {amp_name} not found!")
         result = self.random_search(fit_params=planet_params, *args, **kwargs)
-        result = self.precision_search(fit_params=planet_params, init_val=list(result.x), *args, **kwargs)
+        result = self.precision_search(fit_params=planet_params, init_val=list(result.x), 
+                                       stepsize=0.1, niter=10000, niter_success=500, *args, **kwargs)
+        for i, name in enumerate(planet_params):
+            self.NLL.set_param_val(name, result.x[i])
         self.fit_result.load_fit_result(self.NLL, result)
         if std_err == True:
             self.fit_result.evaluate_std_error()
@@ -136,15 +142,21 @@ class ENEFitter():
                     position_name[0] = name
                 if name.endswith('dec'):
                     position_name[1] = name
-            self.fit_result.draw_scan_result(position_name)
+            self.fit_result.draw_scan_result(position_name, file_name=f"{amp_name}", *args, **kwargs)
 
         return result
 
-    def fit_all(self, *args, **kwargs):
+    def fit_all(self, if_random=False, *args, **kwargs):
+        print("Fitting all parameters...")
         self.NLL.free_all_params()
-        result = self.random_search(*args, **kwargs)
-        result = self.precision_search(init_val=list(result.x), *args, **kwargs)
-        self.fit_result.save_fit_result(self.NLL, result)
+        if if_random:
+            result = self.random_search(*args, **kwargs)
+            result = self.precision_search(init_val=list(result.x), stepsize=0.1, niter=10000, 
+                                           niter_success=500, *args, **kwargs)
+        else:
+            result = self.precision_search(stepsize=0.1, niter=10000, niter_success=500, *args, **kwargs)
+        self.fit_result.load_fit_result(self.NLL, result)
         self.fit_result.evaluate_std_error()
+        self.fit_result.print_result()
 
         return result

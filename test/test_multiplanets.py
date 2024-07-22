@@ -19,7 +19,7 @@ obs_config = {
     },
     'Observation':{
         'ObsNumber': 360,
-        'IntegrationTime': 100,  # unit: second
+        'IntegrationTime': 200,  # unit: second
         'ObsMode': [1, -1],  # [1] or [-1] or [1, -1]
         'Phase':{
             'Start' : 0.,
@@ -27,12 +27,11 @@ obs_config = {
         },
         'Baseline':{
             'Type': 'Constant',
-            'Value': 15.,  # unit: meter
+            'Value': 30.,  # unit: meter
         },
     },
     'Configuration':{
         # Formation parameters
-        'baseline': 10,         # nulling baseline [meter]
         'ratio':    6,          # ratio of imaging baseline versus nulling baseline [dimensionless]]
         'formation_longitude': 0.,  # Formation longitude [degree] 
         'formation_latitude' : 0.,  # Formation latitude [degree] 
@@ -55,6 +54,28 @@ gen_amp_config = {
                 'temperature':    {'mean': 285.},
                 'ra':            {'mean': 62.5},
                 'dec':            {'mean': 78.1},
+            },
+        },
+        'mars':{
+            'Model': 'PlanetBlackBody',
+            'Spectrum': 'InterpBlackBody',
+            'Parameters':
+            {
+                'radius':         {'mean': 3389.5e3},
+                'temperature':    {'mean': 210.},
+                'ra':            {'mean': 80.},
+                'dec':            {'mean': -129.24},
+            },
+        },
+        'venus':{
+            'Model': 'PlanetBlackBody',
+            'Spectrum': 'InterpBlackBody',
+            'Parameters':
+            {
+                'radius':         {'mean': 6051.8e3},
+                'temperature':    {'mean': 737.},
+                'ra':            {'mean': -50.},
+                'dec':            {'mean': 51.8},
             },
         },
         'star':{
@@ -81,15 +102,36 @@ gen_amp_config = {
 
 fit_amp_config = {
     'Amplitude':{
-        'earth':{
+        'planet1':{
             'Model': 'RelativePlanetBlackBody',
             'Spectrum': 'BinnedBlackBody',
-            #'Spectrum': 'InterpBlackBody',
             'Parameters':
             {
-                'r_radius':         {'mean': 1., 'min': 0., 'max': 5., 'fixed': False},
-                'r_temperature':    {'mean': 1., 'min': 0., 'max': 5., 'fixed': False},
-                'r_ra':            {'mean': 1., 'min': -2., 'max': 2., 'fixed': False},
+                'r_radius':         {'mean': 1e-5, 'min': 0., 'max': 5., 'fixed': False},
+                'r_temperature':    {'mean': 1e-5, 'min': 0., 'max': 5., 'fixed': False},
+                'r_ra':             {'mean': 1., 'min': -2., 'max': 2., 'fixed': False},
+                'r_dec':            {'mean': 1., 'min': -2., 'max': 2., 'fixed': False},
+            },
+        },
+        'planet2':{
+            'Model': 'RelativePlanetBlackBody',
+            'Spectrum': 'BinnedBlackBody',
+            'Parameters':
+            {
+                'r_radius':         {'mean': 1e-5, 'min': 0., 'max': 5., 'fixed': False},
+                'r_temperature':    {'mean': 1e-5, 'min': 0., 'max': 5., 'fixed': False},
+                'r_ra':             {'mean': 1., 'min': -2., 'max': 2., 'fixed': False},
+                'r_dec':            {'mean': 1., 'min': -2., 'max': 2., 'fixed': False},
+            },
+        },
+        'planet3':{
+            'Model': 'RelativePlanetBlackBody',
+            'Spectrum': 'BinnedBlackBody',
+            'Parameters':
+            {
+                'r_radius':         {'mean': 1e-5, 'min': 0., 'max': 5., 'fixed': False},
+                'r_temperature':    {'mean': 1e-5, 'min': 0., 'max': 5., 'fixed': False},
+                'r_ra':             {'mean': 1., 'min': -2., 'max': 2., 'fixed': False},
                 'r_dec':            {'mean': 1., 'min': -2., 'max': 2., 'fixed': False},
             },
         },
@@ -120,4 +162,7 @@ diff_data = data_handler.diff_data(obs_creator)
 
 # Estimation
 fitter = ENEFitter(AmplitudeCreator(config=fit_amp_config), diff_data)
-fitter.search_planet('earth', draw=True, std_err=True, random_number=50)
+for key in fit_amp_config['Amplitude'].keys():
+    fitter.search_planet(key, random_number=20)
+
+fitter.fit_all()

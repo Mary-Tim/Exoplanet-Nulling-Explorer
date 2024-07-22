@@ -8,14 +8,10 @@ plt.style.use(mplhep.style.LHCb2)
 from tqdm import tqdm
 
 import torch
-import torch.nn as nn
-import torch.autograd as atg
 torch.set_default_device('cuda:0')
 torch.set_default_dtype(torch.float64)
 
 from nullingexplorer.generator import PoissonSignificance
-from nullingexplorer.utils import Constants as cons
-from nullingexplorer.utils import Configuration as cfg
 
 # Observation plan
 obs_config = {
@@ -27,7 +23,7 @@ obs_config = {
     },
     'Observation':{
         'ObsNumber': 360,
-        'IntegrationTime': 100,  # unit: second
+        'IntegrationTime': 1000,  # unit: second
         'ObsMode': [1, -1],  # [1] or [-1] or [1, -1]
         'Phase':{
             'Start' : 0.,
@@ -35,7 +31,10 @@ obs_config = {
         },
         'Baseline':{
             'Type': 'Constant',
-            'Value': 15.,  # unit: meter
+            'Value': 30.,  # unit: meter
+            #'Type': 'Linear',
+            #'Low': 10.,  # unit: meter
+            #'High': 50.,  # unit: meter
         },
     },
     'Configuration':{
@@ -53,15 +52,26 @@ obs_config = {
 
 sig_amp_config = {
     'Amplitude':{
-        'earth':{
+        #'earth':{
+        #    'Model': 'PlanetBlackBody',
+        #    'Spectrum': 'InterpBlackBody',
+        #    'Parameters':
+        #    {
+        #        'radius':         {'mean': 6371.e3},
+        #        'temperature':    {'mean': 285.},
+        #        'ra':            {'mean': 62.5},
+        #        'dec':            {'mean': 78.1},
+        #    },
+        #},
+        'mars':{
             'Model': 'PlanetBlackBody',
             'Spectrum': 'InterpBlackBody',
             'Parameters':
             {
-                'radius':         {'mean': 6371.e3},
-                'temperature':    {'mean': 285.},
-                'ra':            {'mean': 62.5},
-                'dec':            {'mean': 78.1},
+                'radius':         {'mean': 3389.5e3},
+                'temperature':    {'mean': 210.},
+                'ra':            {'mean': 80.},
+                'dec':            {'mean': -129.24},
             },
         },
     },
@@ -101,12 +111,46 @@ bkg_amp_config = {
     }
 }
 
+scan_fov = [-200., 200.]
+scan_num = 100
+
+ra_line = np.linspace(scan_fov[0], scan_fov[1], scan_num)
+dec_line = np.linspace(scan_fov[0], scan_fov[1], scan_num)
+
+RA, DEC = np.meshgrid(ra_line, dec_line)
+
+ra_array = RA.flatten()
+dec_array = DEC.flatten()
+
 sig_poisson = PoissonSignificance()
 sig_poisson.obs_config = obs_config
-sig_poisson.sig_amp_config = sig_amp_config
 sig_poisson.bkg_amp_config = bkg_amp_config
 
-sig_pe = sig_poisson.gen_sig_pe()
 bkg_pe = sig_poisson.gen_bkg_pe()
 
-print(f"SNR: {sig_poisson.get_significance(sig_pe, bkg_pe):.3f}")
+def sig_point(ra, dec):
+    sig_amp_config['Amplitude']['mars']['Parameters']['ra']['mean'] = ra
+    sig_amp_config['Amplitude']['mars']['Parameters']['dec']['mean'] = dec
+    sig_poisson.sig_amp_config = sig_amp_config
+    sig_pe = sig_poisson.gen_sig_pe()
+    return sig_poisson.get_significance(sig_pe, bkg_pe)
+
+significance = np.zeros(len(ra_array))
+
+for i, ra, dec in tqdm(zip(range(len(ra_array)), ra_array, dec_array), total=len(ra_array)):
+    significance[i] = sig_point(ra, dec)
+
+fig, ax = plt.subplots()
+levels = np.arange(0., 1.01*np.max(significance), 1.01*np.max(significance)/100.)
+trans_map_cont = ax.contourf(RA, DEC, significance.reshape(scan_num, scan_num), levels=levels, cmap = plt.get_cmap("bwr"))
+
+ax.set_xlabel("ra / mas")
+ax.set_ylabel("dec / mas")
+
+cbar = fig.colorbar(trans_map_cont, format="%.2f")
+
+plt.show()
+
+
+
+
