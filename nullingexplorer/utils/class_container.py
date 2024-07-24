@@ -20,7 +20,8 @@ class ClassContainer(object):
             "Amplitude"         : {},
             "Instrument"        : {}, 
             "Spectrum"          : {},
-            "Transmission"      : {}
+            "Transmission"      : {},
+            "Electronics"       : {}
         }
     def __new__(cls, *args, **kwds):
         if cls._instance is None:
@@ -90,6 +91,9 @@ def get_spectrum(cls_name = None):
 
 def get_transmission(cls_name = None):
     return ClassContainer.get_class('Transmission', cls_name)
+
+def get_electronics(cls_name = None):
+    return ClassContainer.get_class('Electronics', cls_name)
 
 # test
 def main():

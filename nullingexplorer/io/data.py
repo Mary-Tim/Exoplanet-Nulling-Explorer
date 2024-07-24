@@ -9,7 +9,7 @@ plt.style.use(mplhep.style.LHCb2)
 from nullingexplorer.generator import ObservationCreator
 
 class DataHandler():
-    def __init__(self, data) -> None:
+    def __init__(self, data: TensorDict=None) -> None:
         self.__data = data
 
     #def __getattr__(self, name: str) -> torch.Any:
@@ -37,10 +37,12 @@ class DataHandler():
             self.__data.detach().to_h5(file_h5.name, compression="gzip", compression_opts=9)
             file_h5.close()
 
-    def load(self, path: str):
+    @classmethod
+    def load(cls, path: str):
         data_h5 = PersistentTensorDict.from_h5(path)
-        self.__data = data_h5.copy()
+        data = data_h5.to_tensordict()
         data_h5.close()
+        return cls(data)
 
     def diff_data(self, obs_creator: ObservationCreator):
         if self.data == None:

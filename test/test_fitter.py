@@ -120,4 +120,4 @@ diff_data = data_handler.diff_data(obs_creator)
 
 # Estimation
 fitter = ENEFitter(AmplitudeCreator(config=fit_amp_config), diff_data)
-fitter.search_planet('earth', draw=True, std_err=True, random_number=50)
+fitter.search_planet('earth', draw=True, std_err=True, random_number=10)

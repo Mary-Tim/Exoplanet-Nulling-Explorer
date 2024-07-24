@@ -26,7 +26,7 @@ class ENEFitter():
         if NLL_type not in self.NLL_dict.keys():
             raise KeyError(f"NLL type {NLL_type} not found!")
         self.NLL = self.NLL_dict[NLL_type](self.amp, self.data)
-        self.fit_result = FitResult()
+        self.fit_result = FitResult(auto_save=False)
         self.min_method = min_method
 
     def scipy_basinhopping(self, stepsize=1., niter=1000, niter_success=50, init_val=None, *args, **kargs):
@@ -115,7 +115,7 @@ class ENEFitter():
         result = self.scipy_basinhopping(init_val=init_val, *args, **kwargs)
         return result
 
-    def search_planet(self, amp_name:str, draw=False, std_err=False, *args, **kwargs):
+    def search_planet(self, amp_name:str, std_err=False, draw=False, show=False, *args, **kwargs):
         print(f"Searching planet {amp_name}...")
         self.NLL.free_all_params()
         name_of_params = self.NLL.name_of_params
@@ -142,7 +142,7 @@ class ENEFitter():
                     position_name[0] = name
                 if name.endswith('dec'):
                     position_name[1] = name
-            self.fit_result.draw_scan_result(position_name, file_name=f"{amp_name}", *args, **kwargs)
+            self.fit_result.draw_scan_result(position_name, file_name=f"{amp_name}", show=show)
 
         return result
 
@@ -159,4 +159,4 @@ class ENEFitter():
         self.fit_result.evaluate_std_error()
         self.fit_result.print_result()
 
-        return result
+        return self.fit_result.result['best_nll']

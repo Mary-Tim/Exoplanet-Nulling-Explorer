@@ -24,7 +24,7 @@ obs_config = {
     },
     'Observation':{
         'ObsNumber': 360,
-        'IntegrationTime': 20000,  # unit: second
+        'IntegrationTime': 200,  # unit: second
         'ObsMode': [1, -1],  # [1] or [-1] or [1, -1]
         'Phase':{
             'Start' : 0.,
@@ -66,7 +66,7 @@ sig_amp_config = {
         },
     },
     'Instrument': 'MiYinBasicType',
-    'TransmissionMap': 'DualChoppedDestructive',
+    'TransmissionMap': 'DualChoppedDifferential',
     'Configuration':{
         'distance': 10,         # distance between Miyin and target [pc]
         'star_radius': 695500,  # Star radius [kilometer]

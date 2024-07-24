@@ -14,6 +14,9 @@ torch.set_default_dtype(torch.float64)
 
 from nullingexplorer.significance import PoissonSignificance
 
+from itertools import cycle
+cycol = cycle('bgrcmk')
+
 # Observation plan
 obs_config = {
     'Spectrum':{
@@ -33,9 +36,6 @@ obs_config = {
         'Baseline':{
             'Type': 'Constant',
             'Value': 30.,  # unit: meter
-            #'Type': 'Linear',
-            #'Low': 10.,  # unit: meter
-            #'High': 50.,  # unit: meter
         },
     },
     'Configuration':{
@@ -91,6 +91,12 @@ bkg_amp_config = {
     },
     'Instrument': {'Model': 'MiYinBasicType'},
     'TransmissionMap': {'Model': 'DualChoppedDestructive'},
+    'Electronics': {
+        'Model': 'UniformElectronics',
+        'Buffers': {
+            'noise_rate': 1.0,
+            },
+        },
     'Configuration':{
         'distance': 10,         # distance between Miyin and target [pc]
         'star_radius': 695500,  # Star radius [kilometer]
@@ -100,8 +106,10 @@ bkg_amp_config = {
         'zodi_level': 3,        # scale parameter for exo-zodi [dimensionless]
     }
 }
-
-intg_time = np.linspace(1., 200., 100)
+max_time = 1600.
+intg_time = torch.linspace(0., max_time, 1000)
+elec_noise_rate = np.logspace(0, 3, 4)
+obs_number = obs_config['Observation']['ObsNumber']
 
 sig_poisson = PoissonSignificance()
 sig_poisson.obs_config = obs_config
@@ -109,29 +117,39 @@ sig_poisson.obs_config = obs_config
 sig_poisson.sig_amp_config = sig_amp_config
 sig_pe = sig_poisson.gen_sig_pe()
 
-sig_poisson.bkg_amp_config = bkg_amp_config
-bkg_pe = sig_poisson.gen_bkg_pe()
-
-def sig_point(time):
-    return sig_poisson.get_significance(sig_pe*time, bkg_pe*time)
-
-significance = np.zeros(len(intg_time))
-
-for i, time in tqdm(enumerate(intg_time), total=len(intg_time)):
-    significance[i] = sig_point(time)
+time_at_ten_sigma = np.zeros(len(elec_noise_rate))
 
 fig, ax = plt.subplots()
-trans_map_cont = ax.plot(intg_time, significance, color='black')
+def sig_elec_noise(elec_rate):
+    bkg_amp_config['Electronics']['Buffers']['noise_rate'] = elec_rate
+    sig_poisson.bkg_amp_config = bkg_amp_config
+    bkg_pe = sig_poisson.gen_bkg_pe()
+    color = next(cycol)
+    def sig_point(time):
+        return sig_poisson.get_significance(sig_pe*time, bkg_pe*time)
+    lineshape_noise = torch.vmap(sig_point)(intg_time)
+    ax.plot(intg_time.cpu().detach().numpy()*obs_number/3600, lineshape_noise.cpu().detach().numpy(), color=color, label=f"$10^{np.log10(elec_rate):.0f}$")
 
-ax.set_xlabel("Time / s")
-ax.set_ylabel("Significance")
+    def aimed_time(signi):
+        return np.power(signi/sig_point(1.0).cpu().detach().numpy(), 2)
 
-aimed_signifi = 10.
+    time_flag = aimed_time(10)*obs_number/3600
+    ax.plot([time_flag, time_flag], [0, 10], linestyle='--', color=color)
 
-def aimed_time(signi):
-    return np.power(signi/sig_point(1.0).cpu().detach().numpy(), 2)
+    return time_flag
 
-print(f"Integral time for 10$\,\sigma$: {aimed_time(aimed_signifi):.2f} s")
+for i, elec_rate in tqdm(enumerate(elec_noise_rate), total=len(elec_noise_rate)):
+    time_at_ten_sigma[i] = sig_elec_noise(elec_rate)
+
+ax.plot([0, time_at_ten_sigma[-1]], [10, 10], linestyle='--', color='black')
+ax.set_xlabel("Time [hour]")
+ax.set_ylabel("Significance [$\\rm{{\\sigma}}$]")
+ax.set_xlim([0., max_time*obs_number/3600.])
+ax.set_ylim([0., 12.])
+ax.legend(fontsize=30, loc='lower center')
+
+for i in range(len(elec_noise_rate)):
+    print(f"elec: {elec_noise_rate[i]}, time: {time_at_ten_sigma[i]:.2f} / hour")
 
 plt.show()
 

@@ -6,6 +6,7 @@ torch.set_default_device('cuda:0')
 torch.set_default_dtype(torch.float64)
 
 from nullingexplorer.generator import AmplitudeCreator, ObservationCreator
+from nullingexplorer.io import DataHandler
 
 amp_config = {
     'Amplitude':{
@@ -50,7 +51,7 @@ obs_config = {
         'High': 18.5,        # unit: micrometer
     },
     'Observation':{
-        'ObsNumber': 360,
+        'ObsNumber': 10,
         'IntegrationTime': 100,  # unit: second
         'ObsMode': [1, -1],  # [1] or [-1] or [1, -1]
         'Phase':{
@@ -83,4 +84,5 @@ obs_creator.load(obs_config)
 data = obs_creator.generate()
 
 data['photon_electron'] = torch.poisson(amp(data))
-print(data['photon_electron'])
+data_handler = DataHandler(data)
+data_handler.save("results/test.hdf5")

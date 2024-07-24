@@ -12,7 +12,7 @@ plt.style.use(mplhep.style.LHCb2)
 from nullingexplorer.utils import Constants as cons
 
 class FitResult():
-    def __init__(self, output_path = None):
+    def __init__(self, auto_save=True, output_path = None):
         self.__result = {}
         self.__unit = {
                         'ra': 'mas',
@@ -25,14 +25,16 @@ class FitResult():
                         'r_temperature': '285 * Kelvin'
                        }
         self.nll_model = None
-        start_time = datetime.now()
-        if output_path is None:
-            self.__output_path = f"results/Job_{start_time.strftime('%Y%m%d_%H%M%S')}"
-        else:
-            self.__output_path = f"{output_path}_{start_time.strftime('%Y%m%d_%H%M%S')}"
-        if not os.path.exists(self.__output_path):
-            os.mkdir(self.__output_path)
-        print(f"The result will be saved to: {self.__output_path}")
+        self.__auto_save = auto_save
+        if self.__auto_save:
+            start_time = datetime.now()
+            if output_path is None:
+                self.__output_path = f"results/Job_{start_time.strftime('%Y%m%d_%H%M%S')}"
+            else:
+                self.__output_path = f"{output_path}_{start_time.strftime('%Y%m%d_%H%M%S')}"
+            if not os.path.exists(self.__output_path):
+                os.mkdir(self.__output_path)
+            print(f"The result will be saved to: {self.__output_path}")
 
     def load_fit_result(self, nll_model, scipy_result: optimize.OptimizeResult):
     #def save_fit_result(self, nll_model: NegativeLogLikelihood, scipy_result: optimize.OptimizeResult):
@@ -81,28 +83,31 @@ class FitResult():
 
     def save(self, save_type = 'hdf5'):
         if save_type == 'hdf5':
-            self.__save_hdf5()
+            self.__auto_save_hdf5()
         elif save_type == 'fits':
-            self.__save_fits()
+            self.__auto_save_fits()
         else:
             raise TypeError('File format not support')
         print(f"Save fit result to: {self.__output_path}/result.{save_type}")
 
 
-    def __save_hdf5(self):
+    def __auto_save_hdf5(self):
         with h5py.File(f"{self.__output_path}/result.hdf5", 'w') as file:
             for key, val in self.__result.items():
                 file.create_dataset(key, data=val)
 
-    def __save_fits(self):
+    def __auto_save_fits(self):
         '''
-        TODO: 类比__save_hdf5，将self.__result存入fits文件
+        TODO: 类比__auto_save_hdf5，将self.__result存入fits文件
         '''
         pass
 
-
     def keys(self):
         return self.__result.keys()
+
+    @property
+    def result(self):
+        return self.__result
 
     @classmethod
     def load(cls, path: str):
@@ -154,7 +159,8 @@ class FitResult():
         scat = ax.scatter(line, self.__result['scan_nll'], s=30)
         ax.set_xlabel("Task")
         ax.set_ylabel("NLL")
-        plt.savefig(f'{self.__output_path}/{file_name}_NLL.pdf')
+        if self.__auto_save:
+            plt.savefig(f'{self.__output_path}/{file_name}_NLL.pdf')
 
         if len(position_name) != 0:
             ra_index  = self.__result['param_name'].index(position_name[0][position_name[0].find(".")+1:])
@@ -176,7 +182,8 @@ class FitResult():
             fig.colorbar(scat,ax=ax,orientation='vertical',label='NLL')
             ax.set_xlabel("ra")
             ax.set_ylabel("dec")
-            plt.savefig(f'{self.__output_path}/{file_name}_location.pdf')
+            if self.__auto_save:
+                plt.savefig(f'{self.__output_path}/{file_name}_location.pdf')
 
             if show:
                 plt.show()

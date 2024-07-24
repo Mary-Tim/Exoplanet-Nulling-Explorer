@@ -42,7 +42,7 @@ class NegativeLogLikelihood(nn.Module, ABC):
                 sub_model = getattr(sub_model, ip)
                 if hasattr(sub_model, 'boundary'):
                     self.__total_boundary[key] = sub_model.boundary[path[-1]]
-                    print(f"Boundary: {key}, {self.__total_boundary[key]}")
+                    #print(f"Boundary: {key}, {self.__total_boundary[key]}")
     
     def update_boundary(self):
         self.__boundary = {}
@@ -137,6 +137,7 @@ class NegativeLogLikelihood(nn.Module, ABC):
         #for par, val in zip(self.parameters(), args):
         #for par, val in zip(self.__free_param_list.values(), args):
         #    par.data.fill_(val.data.item())
+        #self.amp.forward(self.dataset)
         return self.call_nll()
 
     def hessian(self):
