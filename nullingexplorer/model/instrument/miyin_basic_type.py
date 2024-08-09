@@ -36,4 +36,15 @@ class MiYinBasicType(BaseInstrument):
         : param dec: declination of the point (unit: radius)
         : param wavelength: wavelength of the light (unit: meter)
         '''
-        return 0.5 * (1 - self.tanh(cons._radian_to_mas*(torch.sqrt(ra**2+dec**2)-0.5*wavelength/(self.mirror_diameter))))
+        return self.field_of_view_polar(torch.sqrt(ra**2+dec**2), wavelength)
+        #return 0.5 * (1 - self.tanh(cons._radian_to_mas*(torch.sqrt(ra**2+dec**2)-0.5*wavelength/(self.mirror_diameter))))
+
+    def field_of_view_polar(self, angular, wavelength):
+        '''
+        Calculate the effective field-of-view
+
+        : param ra: right ascension of the point (unit: radius)
+        : param dec: declination of the point (unit: radius)
+        : param wavelength: wavelength of the light (unit: meter)
+        '''
+        return 0.5 * (1 - self.tanh(cons._radian_to_mas*(angular-0.5*wavelength/(self.mirror_diameter))))

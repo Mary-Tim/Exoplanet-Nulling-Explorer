@@ -47,3 +47,23 @@ class DualChoppedDifferential(BaseTransmission):
         alpha, beta = self.cartesian_rotation(ra, dec, -data['phase'])
         return torch.sin(2 * np.pi * data['baseline'] / 2. * alpha / wavelength) ** 2 * torch.sin(
                     4 * self.ratio * np.pi * data['baseline'] / 2. * beta / wavelength)
+
+class PolarDualChoppedDifferential(BaseTransmission):
+    def __init__(self):
+        super().__init__()
+        #self.register_buffer('half_baseline', cfg.get_property('baseline') / 2.)
+        self.register_buffer('ratio', cfg.get_property('ratio'))
+
+    def forward(self, angular, polar, wavelength, data):
+        '''
+        Transmission map of a dual-chopped Bracewell nuller
+
+        : param ra: right ascension of the point (unit: radius)
+        : param dec: declination of the point (unit: radius)
+        : param data: dict of dataset, content:
+            phi: phase of nuller (unitL radian)
+            wavelength: wavelength of the light (unit: meter)
+        '''
+        alpha, beta = self.to_cartesian(angular, polar - data['phase'])
+        return torch.sin(2 * np.pi * data['baseline'] / 2. * alpha / wavelength) ** 2 * torch.sin(
+                    4 * self.ratio * np.pi * data['baseline'] / 2. * beta / wavelength)

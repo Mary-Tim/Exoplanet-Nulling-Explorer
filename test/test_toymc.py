@@ -16,7 +16,7 @@ obs_config = {
     },
     'Observation':{
         'ObsNumber': 360,
-        'IntegrationTime': 100,  # unit: second
+        'IntegrationTime': 200,  # unit: second
         'ObsMode': [1, -1],  # [1] or [-1] or [1, -1]
         'Phase':{
             'Start' : 0.,
@@ -24,12 +24,11 @@ obs_config = {
         },
         'Baseline':{
             'Type': 'Constant',
-            'Value': 15.,  # unit: meter
+            'Value': 30.,  # unit: meter
         },
     },
     'Configuration':{
         # Formation parameters
-        'baseline': 10,         # nulling baseline [meter]
         'ratio':    6,          # ratio of imaging baseline versus nulling baseline [dimensionless]]
         'formation_longitude': 0.,  # Formation longitude [degree] 
         'formation_latitude' : 0.,  # Formation latitude [degree] 
@@ -43,6 +42,17 @@ obs_config = {
 
 gen_amp_config = {
     'Amplitude':{
+        #'venus':{
+        #    'Model': 'PlanetBlackBody',
+        #    'Spectrum': 'BinnedBlackBody',
+        #    'Parameters':
+        #    {
+        #        'radius':         {'mean': 6051.8e3},
+        #        'temperature':    {'mean': 737.},
+        #        'ra':            {'mean': -50.},
+        #        'dec':            {'mean': 51.8},
+        #    },
+        #},
         'star':{
             'Model': 'StarBlackBodyMatrix',
         },
@@ -67,15 +77,26 @@ gen_amp_config = {
 
 fit_amp_config = {
     'Amplitude':{
+        #'venus':{
+        #    'Model': 'RelativePlanetBlackBody',
+        #    'Spectrum': 'BinnedBlackBody',
+        #    'Parameters':
+        #    {
+        #        'r_radius':         {'mean': 1e-5, 'min': 0.7, 'max': 1.1, 'fixed': False},
+        #        'r_temperature':    {'mean': 1e-5, 'min': 2.0, 'max': 3.0, 'fixed': False},
+        #        'r_ra':             {'mean': 1., 'min': -0.8, 'max': -0.2, 'fixed': False},
+        #        'r_dec':            {'mean': 1., 'min': 0.2, 'max': 0.8, 'fixed': False},
+        #    },
+        #},
         'earth':{
             'Model': 'RelativePlanetBlackBody',
             'Spectrum': 'BinnedBlackBody',
             'Parameters':
             {
-                'r_radius':         {'mean': 1.e-5, 'min': 0., 'max': 5., 'fixed': False},
-                'r_temperature':    {'mean': 1.e-5, 'min': 0., 'max': 5., 'fixed': False},
-                'r_ra':            {'mean': 0., 'min': -2., 'max': 2., 'fixed': False},
-                'r_dec':            {'mean': 0., 'min': -2., 'max': 2., 'fixed': False},
+                'r_radius':         {'mean': 1e-5, 'min': 0., 'max': 100., 'fixed': False},
+                'r_temperature':    {'mean': 1e-5, 'min': 0., 'max': 100., 'fixed': False},
+                'r_ra':             {'mean': 1., 'min': -10., 'max': 10., 'fixed': False},
+                'r_dec':            {'mean': 1., 'min': -10., 'max': 10., 'fixed': False},
             },
         },
     },
@@ -92,4 +113,4 @@ fit_amp_config = {
 }
 
 chisq_signi = ChiSquareSignificance(planet='earth', obs_config=obs_config, gen_amp_config=gen_amp_config, fit_amp_config=fit_amp_config)
-chisq_signi.pseudoexperiments(number_of_toy_mc=3)
+chisq_signi.pseudoexperiments(number_of_toy_mc=100, random_fit_number=50, stepsize=5)

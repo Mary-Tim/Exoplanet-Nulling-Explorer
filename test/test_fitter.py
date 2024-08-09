@@ -19,7 +19,7 @@ obs_config = {
     },
     'Observation':{
         'ObsNumber': 360,
-        'IntegrationTime': 100,  # unit: second
+        'IntegrationTime': 200,  # unit: second
         'ObsMode': [1, -1],  # [1] or [-1] or [1, -1]
         'Phase':{
             'Start' : 0.,
@@ -27,12 +27,11 @@ obs_config = {
         },
         'Baseline':{
             'Type': 'Constant',
-            'Value': 15.,  # unit: meter
+            'Value': 30.,  # unit: meter
         },
     },
     'Configuration':{
         # Formation parameters
-        'baseline': 10,         # nulling baseline [meter]
         'ratio':    6,          # ratio of imaging baseline versus nulling baseline [dimensionless]]
         'formation_longitude': 0.,  # Formation longitude [degree] 
         'formation_latitude' : 0.,  # Formation latitude [degree] 
@@ -48,11 +47,13 @@ gen_amp_config = {
     'Amplitude':{
         'earth':{
             'Model': 'PlanetBlackBody',
-            'Spectrum': 'InterpBlackBody',
+            'Spectrum': 'BinnedBlackBody',
             'Parameters':
             {
                 'radius':         {'mean': 6371.e3},
                 'temperature':    {'mean': 285.},
+                #'ra':            {'mean': 50.},
+                #'dec':            {'mean': 100.},
                 'ra':            {'mean': 62.5},
                 'dec':            {'mean': 78.1},
             },
@@ -82,20 +83,23 @@ gen_amp_config = {
 fit_amp_config = {
     'Amplitude':{
         'earth':{
-            'Model': 'RelativePlanetBlackBody',
+            #'Model': 'RelativePlanetBlackBody',
+            'Model': 'RelativePolarPlanetBlackBody',
             'Spectrum': 'BinnedBlackBody',
-            #'Spectrum': 'InterpBlackBody',
             'Parameters':
             {
-                'r_radius':         {'mean': 1., 'min': 0., 'max': 5., 'fixed': False},
-                'r_temperature':    {'mean': 1., 'min': 0., 'max': 5., 'fixed': False},
-                'r_ra':            {'mean': 1., 'min': -2., 'max': 2., 'fixed': False},
-                'r_dec':            {'mean': 1., 'min': -2., 'max': 2., 'fixed': False},
+                'r_radius':         {'mean': 1.e-5, 'min': 0., 'max': 5., 'fixed': False},
+                'r_temperature':    {'mean': 1.e-5, 'min': 0., 'max': 5., 'fixed': False},
+                #'r_ra':             {'mean': 0., 'min': -2., 'max': 2., 'fixed': False},
+                #'r_dec':            {'mean': 0., 'min': -2., 'max': 2., 'fixed': False},
+                'r_angular':        {'mean': 1., 'min': 0.1, 'max': 3., 'fixed': False},
+                'r_polar':          {'mean': 0., 'min': 0., 'max': 2.*torch.pi, 'fixed': False},
             },
         },
     },
     'Instrument': 'MiYinBasicType',
-    'TransmissionMap': 'DualChoppedDifferential',
+    #'TransmissionMap': 'DualChoppedDifferential',
+    'TransmissionMap': 'PolarDualChoppedDifferential',
     'Configuration':{
         'distance': 10,         # distance between Miyin and target [pc]
         'star_radius': 695500,  # Star radius [kilometer]
@@ -120,4 +124,6 @@ diff_data = data_handler.diff_data(obs_creator)
 
 # Estimation
 fitter = ENEFitter(AmplitudeCreator(config=fit_amp_config), diff_data)
-fitter.search_planet('earth', draw=True, std_err=True, random_number=10)
+fitter.search_planet('earth', draw=True, std_err=True, show=True, random_number=100, position_name=['earth.r_polar', 'earth.r_angular'], polar=True)
+
+print(f"NLL without earth: {fitter.NLL.call_nll_nosig()}")

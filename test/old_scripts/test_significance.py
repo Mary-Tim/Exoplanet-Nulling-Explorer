@@ -13,11 +13,7 @@ import torch.autograd as atg
 torch.set_default_device('cuda:0')
 torch.set_default_dtype(torch.float64)
 
-from nullingexplorer.model.amplitude import *
-from nullingexplorer.model.instrument import MiYinBasicType
-from nullingexplorer.generator import ObservationCreator
-from nullingexplorer.generator import AmplitudeCreator
-from nullingexplorer.io import DataHandler
+from nullingexplorer.significance import PoissonSignificance
 from nullingexplorer.utils import Constants as cons
 from nullingexplorer.utils import Configuration as cfg
 
@@ -105,36 +101,12 @@ bkg_amp_config = {
     }
 }
 
-# 创建观测计划
+sig_poisson = PoissonSignificance()
+sig_poisson.obs_config = obs_config
+sig_poisson.sig_amp_config = sig_amp_config
+sig_poisson.bkg_amp_config = bkg_amp_config
 
-# 计算行星Chopped信号
-obs_creator = ObservationCreator()
-obs_creator.load(obs_config)
-sig_data = obs_creator.generate()
+sig_pe = sig_poisson.gen_sig_pe()
+bkg_pe = sig_poisson.gen_bkg_pe()
 
-sig_amp = AmplitudeCreator(config=sig_amp_config)
-sig_data['photon_electron'] = torch.poisson(sig_amp(sig_data))
-data_handler = DataHandler(sig_data)
-sig_data = data_handler.diff_data(obs_creator)
-
-# 计算本底
-obs_config['Observation']['ObsMode'] = [1]
-obs_creator.load(obs_config)
-bkg_data = obs_creator.generate()
-
-bkg_amp = AmplitudeCreator(config=bkg_amp_config)
-bkg_data['photon_electron'] = torch.poisson(bkg_amp(bkg_data))
-
-# Reshape
-sig_pe = sig_data['photon_electron'].reshape(obs_creator.obs_num, obs_creator.spec_num).t()
-bkg_pe = bkg_data['photon_electron'].reshape(obs_creator.obs_num, obs_creator.spec_num).t()
-
-def cal_SNR_wl(sig, bg):
-    return torch.sum(torch.sqrt(sig**2)) / torch.sqrt(2 * torch.sum(bg) + torch.sum(torch.sqrt(sig**2)))
-    #return torch.sum(torch.sqrt(sig**2)) / torch.sqrt(2 * (torch.sum(bg) + torch.sum(torch.sqrt(sig_o3**2))))
-
-SNR_wl = torch.vmap(cal_SNR_wl)(sig_pe, bkg_pe)
-
-SNR = torch.sqrt(torch.sum(SNR_wl**2))
-print(f'SNR_wl: {SNR_wl}')
-print(f"SNR: {SNR:.3f}")
+print(f"SNR: {sig_poisson.get_significance(sig_pe, bkg_pe):.3f}")

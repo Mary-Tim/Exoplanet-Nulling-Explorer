@@ -20,16 +20,16 @@ class ENEFitter():
         'gaussian': GaussianNLL,
         'poisson': PoissonNLL
     }
-    def __init__(self, amp: BaseAmplitude, data: TensorDict, NLL_type = 'gaussian', min_method='L-BFGS-B'):
+    def __init__(self, amp: BaseAmplitude, data: TensorDict, NLL_type = 'gaussian', min_method='L-BFGS-B', *args, **kwargs):
         self.amp = amp
         self.data = data
         if NLL_type not in self.NLL_dict.keys():
             raise KeyError(f"NLL type {NLL_type} not found!")
         self.NLL = self.NLL_dict[NLL_type](self.amp, self.data)
-        self.fit_result = FitResult(auto_save=False)
+        self.fit_result = FitResult(*args, **kwargs)
         self.min_method = min_method
 
-    def scipy_basinhopping(self, stepsize=1., niter=1000, niter_success=50, init_val=None, *args, **kargs):
+    def scipy_basinhopping(self, stepsize=1, niter=1000, niter_success=50, init_val=None, *args, **kargs):
         boundary = self.NLL.get_boundary()
         boundary_lo = np.array([bound[0] for bound in boundary])
         boundary_hi = np.array([bound[1] for bound in boundary])
@@ -44,7 +44,7 @@ class ENEFitter():
                     niter_success=niter_success)
         return result
 
-    def random_search(self, random_number = 50, fit_params = [], *args, **kwargs):
+    def random_search(self, random_number = 50, fit_params = [], check_boundary = True, *args, **kwargs):
         """
         Utilizes a random search method to find the parameter combination with the minimum negative log-likelihood value.
         
@@ -66,6 +66,7 @@ class ENEFitter():
             scan_result = np.zeros((random_number, len(fit_params)))
         else:
             scan_result = np.zeros((random_number, self.NLL.num_of_params))
+        boundary = self.NLL.get_boundary()
         # For each attempt of the random search 
         for i in tqdm(range(random_number)):
             flag = False                                      
@@ -79,6 +80,16 @@ class ENEFitter():
                 if(retry_times > 100):
                     print("All retry fails! Move to the next point.")
                     break
+            # Check if any parameter reach to the boundary
+            if check_boundary:
+                param_val = this_result.x
+                reach_to_boundary = False
+                for val, bound in zip(param_val, boundary):
+                    if np.fabs(val - bound[0])<1e-3 or np.fabs(val - bound[1])<1e-3:
+                        reach_to_boundary = True
+                        break
+                if reach_to_boundary:
+                    continue
             # Record the negative log-likelihood value and parameter values of this attempt
             scan_nll[i] = this_result.fun
             for j in range(len(this_result.x)):
@@ -89,8 +100,9 @@ class ENEFitter():
             elif this_result.fun < result.fun:
                 result = this_result
         # Store search results in fit_result
-        self.fit_result.set_item('scan_nll', scan_nll)
-        self.fit_result.set_item('scan_result', scan_result)
+        index = np.nonzero(scan_nll)
+        self.fit_result.set_item('scan_nll', scan_nll[index])
+        self.fit_result.set_item('scan_result', scan_result[index])
 
         return result
 
@@ -136,17 +148,11 @@ class ENEFitter():
         self.fit_result.print_result()
 
         if draw == True:
-            position_name = ['', '']
-            for name in planet_params:
-                if name.endswith('ra'):
-                    position_name[0] = name
-                if name.endswith('dec'):
-                    position_name[1] = name
-            self.fit_result.draw_scan_result(position_name, file_name=f"{amp_name}", show=show)
+            self.fit_result.draw_scan_result(file_name=f"{amp_name}", show=show, *args, **kwargs)
 
         return result
 
-    def fit_all(self, if_random=False, *args, **kwargs):
+    def fit_all(self, if_random=False, if_std_err=True, *args, **kwargs):
         print("Fitting all parameters...")
         self.NLL.free_all_params()
         if if_random:
@@ -156,7 +162,8 @@ class ENEFitter():
         else:
             result = self.precision_search(stepsize=0.1, niter=10000, niter_success=500, *args, **kwargs)
         self.fit_result.load_fit_result(self.NLL, result)
-        self.fit_result.evaluate_std_error()
+        if if_std_err:
+            self.fit_result.evaluate_std_error()
         self.fit_result.print_result()
 
-        return self.fit_result.result['best_nll']
+        return self.fit_result.result

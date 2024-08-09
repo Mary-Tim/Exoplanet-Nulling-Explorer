@@ -137,7 +137,6 @@ class NegativeLogLikelihood(nn.Module, ABC):
         #for par, val in zip(self.parameters(), args):
         #for par, val in zip(self.__free_param_list.values(), args):
         #    par.data.fill_(val.data.item())
-        #self.amp.forward(self.dataset)
         return self.call_nll()
 
     def hessian(self):
@@ -165,7 +164,7 @@ class GaussianNLL(NegativeLogLikelihood):
 
     def call_nll_nosig(self):
         # Only for Chopped design. Assuming that all the backgrounds are shot noises.
-        return torch.sum((self.dataset['photon_electron'])**2/self.dataset['pe_uncertainty']**2)
+        return torch.sum((self.dataset['photon_electron'])**2/self.dataset['pe_uncertainty']**2).cpu().detach().numpy()
 
 class PoissonNLL(NegativeLogLikelihood):
     def __init__(self, amp: nn.Module, data: TensorDict):

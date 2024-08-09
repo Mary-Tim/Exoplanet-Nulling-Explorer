@@ -21,9 +21,9 @@ cycol = cycle('bgrcmk')
 obs_config = {
     'Spectrum':{
         'Type': 'Resolution',
-        'R': 20,
-        'Low': 4.,
-        'High': 18.5,        # unit: micrometer
+        'R': 30,
+        'Low': 7.,
+        'High': 28,        # unit: micrometer
     },
     'Observation':{
         'ObsNumber': 360,
@@ -44,7 +44,7 @@ obs_config = {
         'formation_longitude': 0.,  # Formation longitude [degree] 
         'formation_latitude' : 0.,  # Formation latitude [degree] 
         # Instrument parameters
-        'mirror_diameter': 4,   # Diameter of MiYin primary mirror [meter]
+        'mirror_diameter': 3.5,   # Diameter of MiYin primary mirror [meter]
         'quantum_eff': 0.7,     # Quantum efficiency of detector [dimensionless]
         'instrument_eff': 0.05, # Instrument throughput efficiency [dimensionless]
         'nulling_depth': 0.,    # Nulling depth of the instrument [dimensionless, within [0,1) ]
@@ -66,7 +66,7 @@ sig_amp_config = {
         },
     },
     'Instrument': {'Model': 'MiYinBasicType'},
-    'TransmissionMap': {'Model': 'DualChoppedDifferential'},
+    'TransmissionMap': {'Model': 'DualChoppedDestructive'},
     'Configuration':{
         'distance': 10,         # distance between Miyin and target [pc]
         'star_radius': 695500,  # Star radius [kilometer]
@@ -106,10 +106,11 @@ bkg_amp_config = {
         'zodi_level': 3,        # scale parameter for exo-zodi [dimensionless]
     }
 }
-max_time = 1600.
+obs_number = obs_config['Observation']['ObsNumber']
+
+max_time = 130.*3600/obs_number
 intg_time = torch.linspace(0., max_time, 1000)
 elec_noise_rate = np.logspace(0, 3, 4)
-obs_number = obs_config['Observation']['ObsNumber']
 
 sig_poisson = PoissonSignificance()
 sig_poisson.obs_config = obs_config
@@ -128,7 +129,7 @@ def sig_elec_noise(elec_rate):
     def sig_point(time):
         return sig_poisson.get_significance(sig_pe*time, bkg_pe*time)
     lineshape_noise = torch.vmap(sig_point)(intg_time)
-    ax.plot(intg_time.cpu().detach().numpy()*obs_number/3600, lineshape_noise.cpu().detach().numpy(), color=color, label=f"$10^{np.log10(elec_rate):.0f}$")
+    ax.plot(intg_time.cpu().detach().numpy()*obs_number/3600, lineshape_noise.cpu().detach().numpy(), color=color, label=f"$10^{np.log10(elec_rate):.0f}~(\\rm{{e^-/(s\\cdot bins}}))$")
 
     def aimed_time(signi):
         return np.power(signi/sig_point(1.0).cpu().detach().numpy(), 2)

@@ -1,2 +1,3 @@
 from .poisson_significance import PoissonSignificance
 from .chi_square_significance import ChiSquareSignificance
+from .toy_monte_carlo import ToyMonteCarlo

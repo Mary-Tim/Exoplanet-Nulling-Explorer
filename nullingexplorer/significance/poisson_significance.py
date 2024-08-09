@@ -37,6 +37,7 @@ class PoissonSignificance():
     
     def get_significance(self, sig_pe: torch.Tensor, bkg_pe: torch.Tensor):
         def cal_SNR_wl(sig, bg):
+            #return torch.sum(torch.sqrt(sig**2)) / torch.sqrt(torch.sum(bg) + torch.sum(torch.sqrt(sig**2)))
             return torch.sum(torch.sqrt(sig**2)) / torch.sqrt(2 * torch.sum(bg) + torch.sum(torch.sqrt(sig**2)))
 
         SNR_wl = torch.vmap(cal_SNR_wl)(sig_pe, bkg_pe)
@@ -49,15 +50,14 @@ class PoissonSignificance():
         if self.__sig_amp_config is None:
             raise ValueError('No signal amplitude config')
 
-        self.__obs_config['Observation']['ObsMode'] = [1]
+        self.__obs_config['Observation']['ObsMode'] = [1, -1]
         self.obs_creator.load(self.__obs_config)
         sig_data = self.obs_creator.generate()
 
         sig_amp = AmplitudeCreator(config=self.__sig_amp_config)
         sig_data['photon_electron'] = sig_amp(sig_data)
-        #sig_data['photon_electron'] = torch.poisson(sig_amp(sig_data))
-        #data_handler = DataHandler(sig_data)
-        #sig_data = data_handler.diff_data(self.obs_creator)
+        data_handler = DataHandler(sig_data)
+        sig_data = data_handler.diff_data(self.obs_creator)
 
         sig_pe = sig_data['photon_electron'].reshape(self.obs_creator.obs_num, self.obs_creator.spec_num).t()
         return sig_pe
@@ -74,7 +74,6 @@ class PoissonSignificance():
 
         bkg_amp = AmplitudeCreator(config=self.__bkg_amp_config)
         bkg_data['photon_electron'] = bkg_amp(bkg_data)
-        #bkg_data['photon_electron'] = torch.poisson(bkg_amp(bkg_data))
 
         bkg_pe = bkg_data['photon_electron'].reshape(self.obs_creator.obs_num, self.obs_creator.spec_num).t()
         return bkg_pe

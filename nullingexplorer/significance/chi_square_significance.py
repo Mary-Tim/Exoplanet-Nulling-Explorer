@@ -1,9 +1,11 @@
 import torch
 import torch.nn as nn
 
-import copy
+import copy, os
+import h5py
 import numpy as np
 from tensordict import TensorDict
+from datetime import datetime
 
 from nullingexplorer.generator import ObservationCreator, AmplitudeCreator
 from nullingexplorer.io import DataHandler
@@ -31,37 +33,48 @@ class ChiSquareSignificance():
         if self.__bkg_amp_config['Amplitude'] == {}:
             self.__no_other_planet = True
 
-    def generate_toy_mc(self, number = None, path: str = None):
+    def generate_toy_mc(self, number = None, path: str = None, save_mc=False, *args, **kwargs):
         amp = AmplitudeCreator(config=self.__gen_amp_config)
         data = self.__obs_creator.generate()
         data['photon_electron'] = torch.poisson(amp(data))
         self.__data_handler.data = data
 
-        if path is not None:
+        if save_mc:
             self.__data_handler.save(f"{path}/toy_{number}.hdf5")
 
         return self.__data_handler.diff_data(obs_creator=self.__obs_creator)
     
-    def toy_fit(self, data):
+    def toy_fit(self, data, random_fit_number=50, *args, **kwargs):
         sig_fitter = ENEFitter(amp=AmplitudeCreator(config=self.__fit_amp_config), data=data)
-        sig_nll = sig_fitter.fit_all(if_random=True, random_number=50)
+        print("toy_fit(): Fitting signal PDF ......")
+        sig_nll = sig_fitter.fit_all(if_random=True, if_std_err=False, random_number=random_fit_number)['best_nll']
         if self.__no_other_planet:
             bkg_nll = sig_fitter.NLL.call_nll_nosig()
         else:
             bkg_fitter = ENEFitter(amp=AmplitudeCreator(config=self.__bkg_amp_config), data=data)
-            bkg_nll = bkg_fitter.fit_all(if_random=True, random_number=50)
+            print("toy_fit(): Fitting background PDF ......")
+            bkg_nll = bkg_fitter.fit_all(if_random=True, if_std_err=False, random_number=random_fit_number)['best_nll']
 
         return sig_nll, bkg_nll
 
-    def pseudoexperiments(self, number_of_toy_mc:int, mc_path:dict = None):
+    def pseudoexperiments(self, number_of_toy_mc:int, path:dict = None, save = True, *args, **kwargs):
+        if save:
+            start_time = datetime.now()
+            output_path = f"results/Signi_{start_time.strftime('%Y%m%d_%H%M%S')}"
+            if not os.path.exists(output_path):
+                os.mkdir(output_path)
+
         sig_nll_array = np.zeros(number_of_toy_mc)
         bkg_nll_array = np.zeros(number_of_toy_mc)
         for i in range(number_of_toy_mc):
-            print(f"Processing toy MC {i}......")
-            data = self.generate_toy_mc(number=i, path=mc_path)
-            sig_nll_array[i], bkg_nll_array[i] = self.toy_fit(data)
-            print(f"Toy MC {i}: Signal NLL: {sig_nll_array[i]:.3f}, Background NLL: {bkg_nll_array[i]:.3f}")
+            print(f"Processing toy MC {i+1} ...... {number_of_toy_mc} in total.")
+            data = self.generate_toy_mc(number=i, path=output_path, *args, **kwargs)
+            sig_nll_array[i], bkg_nll_array[i] = self.toy_fit(data, *args, **kwargs)
+            print(f"Toy MC {i+1}: Signal NLL: {sig_nll_array[i]:.3f}, Background NLL: {bkg_nll_array[i]:.3f}")
         torch.cuda.empty_cache()
 
-
-    
+        if save:
+            print(f"Save the result to: {output_path}")
+            with h5py.File(f"{output_path}/toy_nll_distribution.hdf5", 'w') as file:
+                file.create_dataset("sig_nll_array", data=sig_nll_array)
+                file.create_dataset("bkg_nll_array", data=bkg_nll_array)

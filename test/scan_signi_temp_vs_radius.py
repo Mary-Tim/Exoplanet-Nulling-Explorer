@@ -12,7 +12,7 @@ import torch
 torch.set_default_device('cuda:0')
 torch.set_default_dtype(torch.float64)
 
-from nullingexplorer.generator import PoissonSignificance
+from nullingexplorer.significance import PoissonSignificance
 
 # Observation plan
 obs_config = {
@@ -66,7 +66,7 @@ sig_amp_config = {
         },
     },
     'Instrument': 'MiYinBasicType',
-    'TransmissionMap': 'DualChoppedDifferential',
+    'TransmissionMap': 'DualChoppedDestructive',
     'Configuration':{
         'distance': 10,         # distance between Miyin and target [pc]
         'star_radius': 695500,  # Star radius [kilometer]
@@ -129,7 +129,6 @@ def sig_point(temp, radius):
 significance = np.zeros(len(temperature_array))
 
 for i, temp, radius in tqdm(zip(range(len(temperature_array)), temperature_array, radius_array), total=len(temperature_array)):
-    #print(temp, radius)
     significance[i] = sig_point(temp, radius)
 
 fig, ax = plt.subplots()

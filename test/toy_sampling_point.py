@@ -1,23 +1,18 @@
 import sys
 sys.path.append('..')
 
-import numpy as np
-import matplotlib.pyplot as plt
-import mplhep
-plt.style.use(mplhep.style.LHCb2)
-from tqdm import tqdm
-
 import torch
-import torch.nn as nn
-import torch.autograd as atg
 torch.set_default_device('cuda:0')
 torch.set_default_dtype(torch.float64)
 
-from nullingexplorer.generator import PoissonSignificance
-from nullingexplorer.utils import Constants as cons
-from nullingexplorer.utils import Configuration as cfg
+from tqdm import tqdm
+import numpy as np
 
-# Observation plan
+from nullingexplorer.generator import AmplitudeCreator, ObservationCreator
+from nullingexplorer.significance import ToyMonteCarlo
+from nullingexplorer.io import DataHandler
+from nullingexplorer.fitter import ENEFitter
+
 obs_config = {
     'Spectrum':{
         'Type': 'Resolution',
@@ -35,7 +30,7 @@ obs_config = {
         },
         'Baseline':{
             'Type': 'Constant',
-            'Value': 15.,  # unit: meter
+            'Value': 30.,  # unit: meter
         },
     },
     'Configuration':{
@@ -51,11 +46,11 @@ obs_config = {
     }
 }
 
-sig_amp_config = {
+gen_amp_config = {
     'Amplitude':{
         'earth':{
             'Model': 'PlanetBlackBody',
-            'Spectrum': 'InterpBlackBody',
+            'Spectrum': 'BinnedBlackBody',
             'Parameters':
             {
                 'radius':         {'mean': 6371.e3},
@@ -64,21 +59,6 @@ sig_amp_config = {
                 'dec':            {'mean': 78.1},
             },
         },
-    },
-    'Instrument': 'MiYinBasicType',
-    'TransmissionMap': 'DualChoppedDestructive',
-    'Configuration':{
-        'distance': 10,         # distance between Miyin and target [pc]
-        'star_radius': 695500,  # Star radius [kilometer]
-        'star_temperature': 5772,   # Star temperature [Kelvin]
-        'target_longitude': 0.,     # Ecliptic longitude [degree]
-        'target_latitude': 0.,      # Ecliptic latitude  [degree]
-        'zodi_level': 3,        # scale parameter for exo-zodi [dimensionless]
-    }
-}
-
-bkg_amp_config = {
-    'Amplitude':{
         'star':{
             'Model': 'StarBlackBodyMatrix',
         },
@@ -101,12 +81,55 @@ bkg_amp_config = {
     }
 }
 
-sig_poisson = PoissonSignificance()
-sig_poisson.obs_config = obs_config
-sig_poisson.sig_amp_config = sig_amp_config
-sig_poisson.bkg_amp_config = bkg_amp_config
+fit_amp_config = {
+    'Amplitude':{
+        'earth':{
+            'Model': 'RelativePolarPlanetBlackBody',
+            'Spectrum': 'BinnedBlackBody',
+            'Parameters':
+            {
+                'r_radius':         {'mean': 1.e-5, 'min': 0.2, 'max': 3., 'fixed': False},
+                'r_temperature':    {'mean': 1.e-5, 'min': 0.2, 'max': 3., 'fixed': False},
+                'r_angular':        {'mean': 1., 'min': 0.1, 'max': 3., 'fixed': False},
+                'r_polar':          {'mean': 0., 'min': 0., 'max': 2.*torch.pi, 'fixed': False},
+            },
+        },
+    },
+    'Instrument': 'MiYinBasicType',
+    'TransmissionMap': 'PolarDualChoppedDifferential',
+    'Configuration':{
+        'distance': 10,         # distance between Miyin and target [pc]
+        'star_radius': 695500,  # Star radius [kilometer]
+        'star_temperature': 5772,   # Star temperature [Kelvin]
+        'target_longitude': 0.,     # Ecliptic longitude [degree]
+        'target_latitude': 0.,      # Ecliptic latitude  [degree]
+        'zodi_level': 3,        # scale parameter for exo-zodi [dimensionless]
+    }
+}
 
-sig_pe = sig_poisson.gen_sig_pe()
-bkg_pe = sig_poisson.gen_bkg_pe()
+integral_time = 100000.
+obs_num = 120
+num_of_toy = 100
+mas_range = [50., 150.]
 
-print(f"SNR: {sig_poisson.get_significance(sig_pe, bkg_pe):.3f}")
+obs_config['Observation']['ObsNumber'] = obs_num
+obs_config['Observation']['IntegrationTime'] = integral_time/float(obs_num)
+
+toy_mc = ToyMonteCarlo()
+for i in range(num_of_toy):
+    mas = np.random.uniform(mas_range[0], mas_range[1])
+    theta = np.random.uniform(0., 2*np.pi)
+    ra = np.cos(theta) * mas
+    dec = np.sin(theta) * mas
+    gen_amp_config['Amplitude']['earth']['Parameters']['ra']['mean']  = ra
+    gen_amp_config['Amplitude']['earth']['Parameters']['dec']['mean'] = dec
+
+    print('*'*30)
+    print(f"Processing toy {i+1} ......")
+    print(f"Truth position -- angular: {mas:3f},\tpolar: {theta:3f}")
+    print('*'*30)
+    toy_mc.do_a_toy(gen_amp_config, fit_amp_config, obs_config, random_fit_number=100, save_toy_result=True, position_name=['earth.r_polar', 'earth.r_angular'], polar=True)
+
+toy_mc.save_all()
+
+

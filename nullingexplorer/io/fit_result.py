@@ -12,7 +12,7 @@ plt.style.use(mplhep.style.LHCb2)
 from nullingexplorer.utils import Constants as cons
 
 class FitResult():
-    def __init__(self, auto_save=True, output_path = None):
+    def __init__(self, auto_save=True, output_path = None, *args, **kwargs):
         self.__result = {}
         self.__unit = {
                         'ra': 'mas',
@@ -22,7 +22,9 @@ class FitResult():
                         'r_ra': '100 * mas',
                         'r_dec': '100 * mas',
                         'r_radius': '6371e3 * kilometer',
-                        'r_temperature': '285 * Kelvin'
+                        'r_temperature': '285 * Kelvin',
+                        'r_angular': '100 * mas',
+                        'r_polar': 'radian'
                        }
         self.nll_model = None
         self.__auto_save = auto_save
@@ -31,7 +33,7 @@ class FitResult():
             if output_path is None:
                 self.__output_path = f"results/Job_{start_time.strftime('%Y%m%d_%H%M%S')}"
             else:
-                self.__output_path = f"{output_path}_{start_time.strftime('%Y%m%d_%H%M%S')}"
+                self.__output_path = f"{output_path}/Job_{start_time.strftime('%Y%m%d_%H%M%S')}"
             if not os.path.exists(self.__output_path):
                 os.mkdir(self.__output_path)
             print(f"The result will be saved to: {self.__output_path}")
@@ -150,7 +152,7 @@ class FitResult():
         n_sigma = -stats.norm.ppf(stats.chi2.sf(delta_2ll,df=ndf,loc=0,scale=1)/2)
         return n_sigma
 
-    def draw_scan_result(self, position_name=[], file_name='fitter_ramdon', show=False):
+    def draw_scan_result(self, position_name=[], file_name='fitter_ramdon', show=False, polar=False, *args, **kwargs):
         if 'scan_nll' not in self.__result.keys():
             raise KeyError('Scan result not found.')
 
@@ -163,8 +165,10 @@ class FitResult():
             plt.savefig(f'{self.__output_path}/{file_name}_NLL.pdf')
 
         if len(position_name) != 0:
-            ra_index  = self.__result['param_name'].index(position_name[0][position_name[0].find(".")+1:])
-            dec_index = self.__result['param_name'].index(position_name[1][position_name[1].find(".")+1:])
+            ra_index  = self.__result['param_name'].index(position_name[0])
+            dec_index = self.__result['param_name'].index(position_name[1])
+            #ra_index  = self.__result['param_name'].index(position_name[0][position_name[0].find(".")+1:])
+            #dec_index = self.__result['param_name'].index(position_name[1][position_name[1].find(".")+1:])
             #dec_index = self.__result['param_name'].index(position_name[1])
             if ra_index == -1 or dec_index == -1:
                 raise KeyError(f'Position name {position_name[0]} and/or {position_name[1]} not found.')
@@ -176,12 +180,15 @@ class FitResult():
             dec_array = dec_array[seq_index]
             nll_array = self.__result['scan_nll'].copy()
             nll_array = nll_array[seq_index]
-            fig, ax = plt.subplots()
+            #fig, ax = plt.subplots(polar=polar)
+            fig = plt.figure()
+            ax = plt.subplot(111, polar=polar)
             levels = np.arange(np.min(nll_array)*1.005, 10., np.fabs(np.max(nll_array)-np.min(nll_array))/100.)
-            scat = ax.scatter(ra_array, dec_array, s=30, c=nll_array, cmap=plt.get_cmap("bwr"))
+            scat = ax.scatter(ra_array, dec_array, s=30, c=nll_array, cmap=plt.get_cmap("gist_rainbow"))
             fig.colorbar(scat,ax=ax,orientation='vertical',label='NLL')
-            ax.set_xlabel("ra")
-            ax.set_ylabel("dec")
+            if not polar:
+                ax.set_xlabel(position_name[0])
+                ax.set_ylabel(position_name[1])
             if self.__auto_save:
                 plt.savefig(f'{self.__output_path}/{file_name}_location.pdf')
 
