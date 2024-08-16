@@ -2,6 +2,7 @@ import os
 import h5py
 import numpy as np
 import mplhep
+import yaml
 
 from datetime import datetime
 from scipy import optimize, stats
@@ -194,3 +195,7 @@ class FitResult():
 
             if show:
                 plt.show()
+
+    def dump_config(self, config_name, config: dict):
+        with open(f"{self.__output_path}/{config_name}.yaml", 'w') as file:
+            yaml.dump(config, file)

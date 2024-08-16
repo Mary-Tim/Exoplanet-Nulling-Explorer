@@ -18,11 +18,10 @@ class NegativeLogLikelihood(nn.Module, ABC):
         self.__free_param_list = {}
         self.create_boundary()
         self.update_param_list()
-        self.__param_list = self.__free_param_list.copy()
 
-        print("Initial Parameters:")
-        for name, param in self.__param_list.items():
-            print(f"{name}: {param.item()}")
+        #print("Initial Parameters:")
+        #for name, param in self.__param_list.items():
+        #    print(f"{name}: {param.item()}")
 
     def update_param_list(self):
         self.__free_param_list = {}

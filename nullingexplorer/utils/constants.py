@@ -1,6 +1,6 @@
 import numpy as np
 class Constants(object):
-    _device = 'cuda:0'                          # Default device
+    #_device = 'cuda:0'                          # Default device
     _Planck_constant = 6.62607015e-34           # Planck constant (unit: J/Hz)
     _light_speed = 299792458.                   # speed of light (unit: m/s)
     _Boltzmann_constant = 1.380649e-23          # Boltzmann constant (unit: m^2 kg s^{-2} K^{-1})

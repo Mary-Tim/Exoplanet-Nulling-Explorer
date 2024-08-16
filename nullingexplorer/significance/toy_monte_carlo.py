@@ -10,7 +10,7 @@ from nullingexplorer.generator import ObservationCreator, AmplitudeCreator
 from nullingexplorer.io import DataHandler
 
 class ToyMonteCarlo():
-    def __init__(self, path = None) -> None:
+    def __init__(self, path = None, multi_gpu = False) -> None:
         self.__result = {
             "param_name": None,
             "bkg_nll"   : [],
@@ -19,9 +19,9 @@ class ToyMonteCarlo():
             "fitted_val" : [],
             "std_err"   : [],
         }
-        self.__param_name = None
         self.__obs_creator = ObservationCreator()
         self.__data_handler = DataHandler()
+        self.__multi_gpu = multi_gpu
 
         start_time = datetime.now()
         if path is None:
@@ -45,12 +45,18 @@ class ToyMonteCarlo():
 
         # Fit toy MC
         print("do_a_toy(): Fit toy MC ......")
-        fitter = ENEFitter(amp = AmplitudeCreator(config=fit_amp_config), data=data, auto_save=save_toy_result, output_path=self.__path)
+        fitter = ENEFitter(amp = AmplitudeCreator(config=fit_amp_config), data=data, auto_save=save_toy_result, output_path=self.__path, multi_gpu=self.__multi_gpu, *args, **kwargs)
         #for planet in fit_amp_config['Amplitude']:
         #    fitter.search_planet(planet, random_number=random_fit_number)
         result = fitter.fit_all(if_random=True, if_std_err=True, random_number=random_fit_number)
+        if result is None:
+            print(f"Cannot found the best fit result! return None.")
+            return None
         if save_toy_result:
             fitter.fit_result.draw_scan_result(*args, **kwargs)
+            fitter.fit_result.dump_config("obs_config", obs_config)
+            fitter.fit_result.dump_config("gen_config", gen_amp_config)
+            fitter.fit_result.dump_config("fit_config", fit_amp_config)
 
         # Save result
         if self.__result["param_name"] is None:
@@ -64,6 +70,8 @@ class ToyMonteCarlo():
 
         # Clean GPU memory
         torch.cuda.empty_cache()
+
+        return result
 
     def save_all(self):
 

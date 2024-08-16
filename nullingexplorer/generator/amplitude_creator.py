@@ -8,21 +8,10 @@ from nullingexplorer.model.amplitude import BaseAmplitude
 from nullingexplorer.utils import get_amplitude, get_instrument, get_spectrum, get_transmission, get_electronics
 from nullingexplorer.utils import Configuration as cfg
 
-class MetaAmplitude(type):
-    def __init__(self, name, bases, attrs, **kwargs):
-        self = super().__init__(name, bases, attrs)
-
-    def __new__(cls, name, bases, attrs, **kwargs):
-        return super().__new__(cls, name, bases, attrs)
-
-    def __call__(self, config=None, *args, **kwargs):
-        self.obj = self.__new__(self, *args, **kwargs)
-        self.__init__(self.obj, *args, **kwargs)
-
-        if config is not None:
-            self.load(config)
-
-        return self.obj
+class AmplitudeCreator(nn.Module):
+    def __init__(self, config):
+        super().__init__()
+        self.load(config)
 
     def load(self, config):
         #print("Generate Amplitude")
@@ -32,53 +21,57 @@ class MetaAmplitude(type):
             if config.endswith(('.yml', '.yaml',)):
                 with open(config, mode='r', encoding='utf-8') as yaml_file:
                     self.config = yaml.load(yaml_file.read(), Loader=yaml.FullLoader)
+
+        # Config transmission map
+        trans_config = 'DualChoppedDestructive'
         if config.get('TransmissionMap'):
             trans_config = config['TransmissionMap']
             if isinstance(trans_config, dict):
                 trans_class = get_transmission(trans_config['Model'])
-                if 'Buffers' in trans_config.keys():
-                    self.buffer_setting(self.obj.trans_class, config=trans_config['Buffers'])
             else: trans_class = get_transmission(trans_config)
-        else:
-            trans_class = get_transmission('DualChoppedDestructive')
         
+        # Regist amplitudes
         if config.get('Amplitude'):
             for name, val in config['Amplitude'].items():
                 self.amplitude_register(name, val, trans_class)
+                if isinstance(trans_config, dict):
+                    if 'Buffers' in trans_config.keys():
+                        self.buffer_setting(getattr(self, name).trans_map, config=trans_config['Buffers'])
 
+        # Regist instrument
+        inst_config = "MiYinBasicType"
         if config.get("Instrument"):
             inst_config = config["Instrument"]
             if isinstance(inst_config, dict):
-                self.obj.instrument = get_instrument(inst_config["Model"])()
+                self.instrument = get_instrument(inst_config["Model"])()
                 if 'Buffers' in inst_config.keys():
-                    self.buffer_setting(self.obj.instrument, config=inst_config['Buffers'])
+                    self.buffer_setting(self.instrument, config=inst_config['Buffers'])
             else:
-                self.obj.instrument = get_instrument(inst_config)()
-        else:
-            self.obj.instrument = get_instrument("MiYinBasicType")()
+                self.instrument = get_instrument(inst_config)()
 
         if config.get('Configuration'):
             for key, val in config['Configuration'].items():
                 cfg.set_property(key, val)
 
+        # Regist electronics background
         if config.get("Electronics"):
             elec_config = config['Electronics']
             if isinstance(elec_config, dict):
-                self.obj.electronics = get_electronics(elec_config['Model'])()
+                self.electronics = get_electronics(elec_config['Model'])()
                 if 'Buffers' in elec_config.keys():
-                    self.buffer_setting(self.obj.electronics, config=elec_config['Buffers'])
+                    self.buffer_setting(self.electronics, config=elec_config['Buffers'])
             else:
-                self.obj.electronics = get_electronics("UniformElectronics")()
+                self.electronics = get_electronics("UniformElectronics")()
 
-            self.obj.forward = lambda data: torch.sum(torch.stack([getattr(self.obj, name)(data) for name in config['Amplitude']]), 0) \
-                * self.obj.instrument(data) + self.obj.electronics(data)
+    def forward(self, data):
+        if hasattr(self, 'electronics'):
+            return torch.sum(torch.stack([getattr(self, name)(data) for name in self.config['Amplitude']]), 0) * self.instrument(data) + self.electronics(data)
         else:
-            self.obj.forward = lambda data: torch.sum(torch.stack([getattr(self.obj, name)(data) for name in config['Amplitude']]), 0) \
-                * self.obj.instrument(data)
+            return torch.sum(torch.stack([getattr(self, name)(data) for name in self.config['Amplitude']]), 0) * self.instrument(data)
 
     def amplitude_register(self, name, config, trans_class):
-        self.obj.__setattr__(name, get_amplitude(config['Model'])())
-        amp = self.obj.__getattr__(name)
+        self.__setattr__(name, get_amplitude(config['Model'])())
+        amp = self.__getattr__(name)
         amp.trans_map = trans_class()
         if 'Spectrum' in config.keys():
             amp.spectrum = self.spectrum_register(config['Spectrum'])
@@ -132,8 +125,3 @@ class MetaAmplitude(type):
                         model.boundary[key][1] = float(val['max'])
                     if 'fixed' in val.keys():
                         getattr(model, key).requires_grad = bool(val['fixed'])
-
-class AmplitudeCreator(BaseAmplitude, metaclass=MetaAmplitude):
-    def __init__(self):
-        super().__init__()
-

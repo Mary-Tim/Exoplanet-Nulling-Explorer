@@ -26,11 +26,14 @@ init_val = {
 limits = {
     'earth.r_radius':       {'mu': (-0.50, 0.50), 'sigma': (5e-3, 1e-0)}, 
     'earth.r_temperature':  {'mu': (-0.20, 0.20), 'sigma': (5e-3, 1e-0)}, 
-    'earth.r_angular':      {'mu': (-0.02, 0.02), 'sigma': (5e-4, 5e-1)}, 
+    'earth.r_angular':      {'mu': (-0.02, 0.02), 'sigma': (5e-2, 1e1)}, 
     'earth.r_polar':        {'mu': (-0.02, 0.02), 'sigma': (5e-4, 5e-1)}
 }
-#hdf5_path = "results/Toy_20240806_173118/toy_MC_result.hdf5"
-hdf5_path = "results/Toy_20240807_163626/toy_MC_result.hdf5"
+# 360, 1e6
+hdf5_path = "results/Toy_20240806_173118/toy_MC_result.hdf5"
+# 10, 1e6
+#hdf5_path = "results/Toy_20240807_163626/toy_MC_result.hdf5"
+# 120, 2e6
 #hdf5_path = "results/Toy_20240808_172237/toy_MC_result.hdf5"
 
 def fit_gauss(data, init_mu=0., init_sigma=0.1):
@@ -58,7 +61,9 @@ truth_convert = np.zeros((len(result["fitted_val"]), 4))
 truth_convert[:, 0] = result["true_val"][:, 0] / 6371e3
 truth_convert[:, 1] = result["true_val"][:, 1] / 285.
 truth_convert[:, 2], truth_convert[:, 3] = to_polar(result["true_val"][:, 2], result["true_val"][:, 3])
-truth_convert[:, 2] = truth_convert[:, 2] / 100.
+truth_convert[:, 2] = truth_convert[:, 2]
+
+result['fitted_val'][:, 2] = result['fitted_val'][:, 2] * 100.
 
 truth_convert[truth_convert[:,3]<0, 3] = truth_convert[truth_convert[:,3]<0, 3] + 2*np.pi
 
@@ -82,7 +87,8 @@ for i, name in enumerate(result["param_name"]):
     ax = fig.add_subplot(2, 2, i+1)
     counts, bins = np.histogram(residual, bins=nbins, range=(range_lo, range_hi))
     errors = np.sqrt(counts)
-    ax.errorbar(bins[:-1], counts, yerr=errors, fmt='ok')
+    #ax.errorbar(bins[:-1], counts, yerr=errors, marker='ok', color='black', capsize=5)
+    ax.errorbar(bins[:-1], counts, yerr=errors, fmt='ok', markersize=10, capsize=5)
     #ax.stairs(counts, bins)
     ax.set_xlabel(name)
 

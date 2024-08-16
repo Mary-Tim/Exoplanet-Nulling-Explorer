@@ -5,7 +5,6 @@ import torch
 torch.set_default_device('cuda:0')
 torch.set_default_dtype(torch.float64)
 
-from nullingexplorer.significance import ChiSquareSignificance
 
 obs_config = {
     'Spectrum':{
@@ -112,5 +111,10 @@ fit_amp_config = {
     }
 }
 
-chisq_signi = ChiSquareSignificance(planet='earth', obs_config=obs_config, gen_amp_config=gen_amp_config, fit_amp_config=fit_amp_config)
-chisq_signi.pseudoexperiments(number_of_toy_mc=100, random_fit_number=50, stepsize=5)
+def main():
+    from nullingexplorer.significance import ChiSquareSignificance
+    chisq_signi = ChiSquareSignificance(planet='earth', obs_config=obs_config, gen_amp_config=gen_amp_config, fit_amp_config=fit_amp_config)
+    chisq_signi.pseudoexperiments(number_of_toy_mc=100, random_fit_number=50, stepsize=5)
+
+if __name__ == '__main__':
+    main()

@@ -2,8 +2,6 @@ import sys
 sys.path.append('..')
 
 import torch
-torch.set_default_device('cuda:0')
-torch.set_default_dtype(torch.float64)
 
 from nullingexplorer.generator import AmplitudeCreator, ObservationCreator
 from nullingexplorer.utils import Constants as cons
@@ -110,20 +108,28 @@ fit_amp_config = {
     }
 }
 
+def main():
+    # Set device during generation
+    torch.set_default_device('cuda:0')
+    torch.set_default_dtype(torch.float64)
+    #torch.multiprocessing.set_start_method('spawn')
 
-# Observation Config
-obs_creator = ObservationCreator()
-obs_creator.load(obs_config)
-data = obs_creator.generate()
+    # Observation Config
+    obs_creator = ObservationCreator()
+    obs_creator.load(obs_config)
+    data = obs_creator.generate()
 
-# Simulation
-gen_amp = AmplitudeCreator(config=gen_amp_config)
-data['photon_electron'] = torch.poisson(gen_amp(data))
-data_handler = DataHandler(data)
-diff_data = data_handler.diff_data(obs_creator)
+    # Simulation
+    gen_amp = AmplitudeCreator(config=gen_amp_config)
+    data['photon_electron'] = torch.poisson(gen_amp(data))
+    data_handler = DataHandler(data)
+    diff_data = data_handler.diff_data(obs_creator)
 
-# Estimation
-fitter = ENEFitter(AmplitudeCreator(config=fit_amp_config), diff_data)
-fitter.search_planet('earth', draw=True, std_err=True, show=True, random_number=100, position_name=['earth.r_polar', 'earth.r_angular'], polar=True)
+    # Estimation
+    fitter = ENEFitter(AmplitudeCreator(config=fit_amp_config), diff_data, multi_gpu=True)
+    fitter.search_planet('earth', draw=True, std_err=True, show=True, random_number=100, position_name=['earth.r_polar', 'earth.r_angular'], polar=True)
 
-print(f"NLL without earth: {fitter.NLL.call_nll_nosig()}")
+    print(f"NLL without earth: {fitter.NLL.call_nll_nosig()}")
+
+if __name__ == '__main__':
+    main()

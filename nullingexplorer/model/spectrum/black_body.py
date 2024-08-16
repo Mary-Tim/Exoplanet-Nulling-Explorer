@@ -20,6 +20,8 @@ class BlackBody(nn.Module):
         : param temperature: <Tensor> Temperature of black body (unit: Kelvin)
         : param wavelength: <Tensor> light wavelength (unit: meter)
         '''
+        #if self.c.get_device() != 0 or wavelength.get_device() != 0:
+        #    print(f"Device: c: {self.c.get_device()}, wavelength: {wavelength.get_device()}")
         return 2 * self.c / (torch.exp(self.exp_para / (wavelength * temperature)) -1) / torch.pow(wavelength, 4)
 
 
