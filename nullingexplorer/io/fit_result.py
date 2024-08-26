@@ -199,3 +199,15 @@ class FitResult():
     def dump_config(self, config_name, config: dict):
         with open(f"{self.__output_path}/{config_name}.yaml", 'w') as file:
             yaml.dump(config, file)
+
+    def draw_meshgrid_result(self, x_grid, y_grid, nll_grid):
+        fig, ax = plt.subplots()
+        levels = np.arange(np.min(nll_grid)*1.005, 10., np.fabs(np.max(nll_grid)-np.min(nll_grid))/100.)
+        trans_map_cont = ax.contourf(x_grid, y_grid, nll_grid, levels=levels, cmap = plt.get_cmap("bwr"))
+        ax.set_xlabel("ra / mas")
+        ax.set_ylabel("dec / mas")
+        
+        cbar = fig.colorbar(trans_map_cont)
+        
+        plt.savefig(f'{self.__output_path}/scan_nll.pdf')
+        plt.show()

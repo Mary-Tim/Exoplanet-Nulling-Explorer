@@ -18,16 +18,16 @@ plt.style.use(mplhep.style.LHCb2)
 nbins = 20
 draw_sigma = 4
 init_val = {
-    'earth.r_radius':       {'mu': 0., 'sigma': 0.2}, 
-    'earth.r_temperature':  {'mu': 0., 'sigma': 0.1}, 
-    'earth.r_angular':      {'mu': 0., 'sigma': 0.002}, 
-    'earth.r_polar':        {'mu': 0., 'sigma': 0.002}
+    'earth.r_radius':       {'mu': 1., 'sigma': 0.2}, 
+    'earth.r_temperature':  {'mu': 1., 'sigma': 0.1}, 
+    'earth.r_angular':      {'mu': 1., 'sigma': 0.02}, 
+    'earth.r_polar':        {'mu': 1., 'sigma': 0.001}
 }
 limits = {
-    'earth.r_radius':       {'mu': (-0.50, 0.50), 'sigma': (5e-3, 1e-0)}, 
-    'earth.r_temperature':  {'mu': (-0.20, 0.20), 'sigma': (5e-3, 1e-0)}, 
-    'earth.r_angular':      {'mu': (-0.02, 0.02), 'sigma': (5e-2, 1e1)}, 
-    'earth.r_polar':        {'mu': (-0.02, 0.02), 'sigma': (5e-4, 5e-1)}
+    'earth.r_radius':       {'mu': (0.50, 1.5), 'sigma': (1e-5, 1.e0)}, 
+    'earth.r_temperature':  {'mu': (0.50, 1.5), 'sigma': (1e-5, 1.e0)}, 
+    'earth.r_angular':      {'mu': (0.50, 1.5), 'sigma': (1e-5, 1.e0)}, 
+    'earth.r_polar':        {'mu': (0.90, 1.1), 'sigma': (1e-5, 9e-3)}
 }
 # 360, 1e6
 #hdf5_path = "results/Toy_20240806_173118/toy_MC_result.hdf5"
@@ -36,7 +36,9 @@ limits = {
 # 120, 2e6
 #hdf5_path = "results/Toy_20240808_172237/toy_MC_result.hdf5"
 # LIFE 2m
-hdf5_path = "results/Toy_20240819_145106/toy_MC_result.hdf5"
+#hdf5_path = "results/Toy_20240819_145106/toy_MC_result.hdf5"
+# LIFE 2m 1k
+hdf5_path = "results/Toy_20240821_170606/toy_MC_result.hdf5"
 
 def fit_gauss(data, init_mu=0., init_sigma=0.1):
     def pdf(x, mu, sigma):
@@ -73,9 +75,10 @@ fig = plt.figure(figsize=(12, 10))
 num_of_data = len(result["fitted_val"])
 for i, name in enumerate(result["param_name"]):
 
+
     # fit with gaussian
-    residual = result["fitted_val"][:,i]-truth_convert[:,i]
-    m = fit_gauss(residual, init_mu=init_val[name]['mu'], init_sigma=init_val[name]['sigma'])
+    divide = result["fitted_val"][:,i]/truth_convert[:,i]
+    m = fit_gauss(divide, init_mu=init_val[name]['mu'], init_sigma=init_val[name]['sigma'])
     m.limits['mu'] = limits[name]['mu']
     m.limits['sigma'] = limits[name]['sigma']
     m.migrad()
@@ -86,7 +89,7 @@ for i, name in enumerate(result["param_name"]):
     range_hi = m.values["mu"] + m.values["sigma"] * draw_sigma
 
     ax = fig.add_subplot(2, 2, i+1)
-    counts, bins = np.histogram(residual, bins=nbins, range=(range_lo, range_hi))
+    counts, bins = np.histogram(divide, bins=nbins, range=(range_lo, range_hi))
     errors = np.sqrt(counts)
     #ax.errorbar(bins[:-1], counts, yerr=errors, marker='ok', color='black', capsize=5)
     ax.errorbar(bins[:-1], counts, yerr=errors, fmt='ok', markersize=10, capsize=5)

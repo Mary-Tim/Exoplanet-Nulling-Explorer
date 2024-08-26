@@ -113,7 +113,7 @@ def main():
 
     integral_time = 200000
     obs_num = 360
-    num_of_toy = 500
+    num_of_toy = 1000
     #mas_range = [50., 150.]
     mas = 100.
 
@@ -121,21 +121,24 @@ def main():
     obs_config['Observation']['IntegrationTime'] = integral_time/float(obs_num)
 
     toy_mc = ToyMonteCarlo(multi_gpu=True)
-    for i in range(num_of_toy):
-        #mas = np.random.uniform(mas_range[0], mas_range[1])
-        theta = np.random.uniform(0., 2*np.pi)
-        ra = np.cos(theta) * mas
-        dec = np.sin(theta) * mas
-        gen_amp_config['Amplitude']['earth']['Parameters']['ra']['mean']  = ra
-        gen_amp_config['Amplitude']['earth']['Parameters']['dec']['mean'] = dec
+    try: 
+        for i in range(num_of_toy):
+            #mas = np.random.uniform(mas_range[0], mas_range[1])
+            theta = np.random.uniform(0., 2*np.pi)
+            ra = np.cos(theta) * mas
+            dec = np.sin(theta) * mas
+            gen_amp_config['Amplitude']['earth']['Parameters']['ra']['mean']  = ra
+            gen_amp_config['Amplitude']['earth']['Parameters']['dec']['mean'] = dec
 
-        print('*'*30)
-        print(f"Processing toy {i+1} ......")
-        print(f"Truth position -- angular: {mas:3f},\tpolar: {theta:3f}")
-        print('*'*30)
-        toy_mc.do_a_toy(gen_amp_config, fit_amp_config, obs_config, random_fit_number=100, save_toy_result=True, position_name=['earth.r_polar', 'earth.r_angular'], polar=True)
-
-    toy_mc.save_all()
+            print('*'*30)
+            print(f"Processing toy {i+1} ......")
+            print(f"Truth position -- angular: {mas:3f},\tpolar: {theta:3f}")
+            print('*'*30)
+            toy_mc.do_a_toy(gen_amp_config, fit_amp_config, obs_config, random_fit_number=100, save_toy_result=True, position_name=['earth.r_polar', 'earth.r_angular'], polar=True)
+    except:
+        toy_mc.save_all()
+    else:
+        toy_mc.save_all()
 
 if __name__ == '__main__':
     main()

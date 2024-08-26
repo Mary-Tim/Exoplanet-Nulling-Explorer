@@ -86,15 +86,11 @@ fit_amp_config = {
             'Spectrum': 'BinnedBlackBody',
             'Parameters':
             {
-                #'r_radius':         {'mean': 1.e-5, 'min': 0., 'max': 5., 'fixed': False},
-                #'r_temperature':    {'mean': 1.e-5, 'min': 0., 'max': 5., 'fixed': False},
-                #'r_ra':             {'mean': 0., 'min': -2., 'max': 2., 'fixed': False},
-                #'r_dec':            {'mean': 0., 'min': -2., 'max': 2., 'fixed': False},
-                #'r_angular':        {'mean': 1., 'min': 0.1, 'max': 3., 'fixed': False},
-                #'r_polar':          {'mean': 0., 'min': 0., 'max': 2.*torch.pi, 'fixed': False},
                 'r_radius':         {'mean': 1.e-5, 'min': 0., 'max': 5., 'fixed': False},
                 'r_temperature':    {'mean': 1.e-5, 'min': 0., 'max': 5., 'fixed': False},
-                'r_angular':        {'mean': 1., 'min': 0.2, 'max': 2., 'fixed': False},
+                #'r_ra':             {'mean': 0., 'min': -2., 'max': 2., 'fixed': False},
+                #'r_dec':            {'mean': 0., 'min': -2., 'max': 2., 'fixed': False},
+                'r_angular':        {'mean': 1., 'min': 0.1, 'max': 3., 'fixed': False},
                 'r_polar':          {'mean': 0., 'min': 0., 'max': 2.*torch.pi, 'fixed': False},
             },
         },
@@ -114,27 +110,26 @@ fit_amp_config = {
 
 def main():
     # Set device during generation
-    torch.set_default_device('cuda:0')
+    torch.set_default_device('cuda:1')
     torch.set_default_dtype(torch.float64)
-    torch.multiprocessing.set_start_method('spawn') # MUST BE SETTED to enable the JoinableQueue in multiprocessing
+    #torch.multiprocessing.set_start_method('spawn')
 
     # Observation Config
     obs_creator = ObservationCreator()
     obs_creator.load(obs_config)
     data = obs_creator.generate()
 
-    # Simulation
+    ## Simulation
     gen_amp = AmplitudeCreator(config=gen_amp_config)
-    data['photon_electron'] = torch.poisson(gen_amp(data))
-    data_handler = DataHandler(data)
-    diff_data = data_handler.diff_data(obs_creator)
+    #data['photon_electron'] = torch.poisson(gen_amp(data))
+    #data_handler = DataHandler(data)
+    #diff_data = data_handler.diff_data(obs_creator)
 
-    # Estimation
-    fitter = ENEFitter(AmplitudeCreator(config=fit_amp_config), diff_data, multi_gpu=True)
-    #fitter.search_planet('earth', draw=True, std_err=True, show=True, random_number=20, position_name=['earth.r_polar', 'earth.r_angular'], polar=True)
-    fitter.fit_all(if_random=True, random_number=100, position_name=['earth.r_polar', 'earth.r_angular'], polar=True)
+    ## Estimation
+    #fitter = ENEFitter(AmplitudeCreator(config=fit_amp_config), diff_data, multi_gpu=False)
+    #fitter.search_planet('earth', draw=True, std_err=True, show=True, random_number=100, position_name=['earth.r_polar', 'earth.r_angular'], polar=True)
 
-    print(f"NLL without earth: {fitter.NLL.call_nll_nosig()}")
+    #print(f"NLL without earth: {fitter.NLL.call_nll_nosig()}")
 
 if __name__ == '__main__':
     main()

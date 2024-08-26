@@ -28,7 +28,7 @@ class ExoZodiacalDust(BaseAmplitude):
         self.register_buffer('star_temperature',   cfg.get_property('star_temperature')) # Star radius (unit: kilometer)
         self.register_buffer('zodi_level', cfg.get_property('zodi_level'))
 
-        self.register_buffer('star_luminosity', torch.tensor((self.star_radius / 6.955e8)**2 * (self.star_temperature / 5772.)**4))
+        self.register_buffer('star_luminosity', (self.star_radius / 6.955e8)**2 * (self.star_temperature / 5772.)**4)
         self.register_buffer('alpha', torch.tensor(0.34))
         self.register_buffer('r_0', torch.sqrt(self.star_luminosity))
         self.register_buffer('r_in', 0.034422617777777775 * self.r_0)
@@ -81,7 +81,7 @@ class ExoZodiacalDustMatrix(ExoZodiacalDust):
         d_radius = (radius_interp[1] - radius_interp[0]) 
         d_psi = torch.abs(psi_interp[1] - psi_interp[0])
 
-        r_mesh, psi_mesh = torch.meshgrid(radius_interp, psi_interp)
+        r_mesh, psi_mesh = torch.meshgrid(radius_interp, psi_interp, indexing='ij')
         r_mesh = r_mesh.flatten()
         psi_mesh = psi_mesh.flatten()
 

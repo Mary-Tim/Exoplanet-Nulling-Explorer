@@ -67,7 +67,7 @@ class StarBlackBodyMatrix(StarBlackBody):
         d_radius = (radius_interp[1] - radius_interp[0]) 
         d_psi = torch.abs(psi_interp[1] - psi_interp[0])
 
-        r_mesh, psi_mesh = torch.meshgrid(radius_interp, psi_interp)
+        r_mesh, psi_mesh = torch.meshgrid(radius_interp, psi_interp, indexing='ij')
         r_mesh = r_mesh.flatten()
         psi_mesh = psi_mesh.flatten()
 
@@ -82,6 +82,7 @@ class StarBlackBodyMatrix(StarBlackBody):
 
             return torch.sum(torch.vmap(infin_star)(r_mesh, psi_mesh))
 
+        #list_star_light = torch.vmap(star_light, chunk_size=10)(data)
         list_star_light = torch.zeros(len(data))
         chunk_size = 10
         for i in range(0, len(data), chunk_size):

@@ -81,23 +81,23 @@ gen_amp_config = {
 fit_amp_config = {
     'Amplitude':{
         'earth':{
-            #'Model': 'RelativePlanetBlackBody',
-            'Model': 'RelativePolarPlanetBlackBody',
+            'Model': 'RelativePlanetBlackBody',
+            #'Model': 'RelativePolarPlanetBlackBody',
             'Spectrum': 'BinnedBlackBody',
             'Parameters':
             {
                 'r_radius':         {'mean': 1.e-5, 'min': 0., 'max': 5., 'fixed': False},
                 'r_temperature':    {'mean': 1.e-5, 'min': 0., 'max': 5., 'fixed': False},
-                #'r_ra':             {'mean': 0., 'min': -2., 'max': 2., 'fixed': False},
-                #'r_dec':            {'mean': 0., 'min': -2., 'max': 2., 'fixed': False},
-                'r_angular':        {'mean': 1., 'min': 0.1, 'max': 3., 'fixed': False},
-                'r_polar':          {'mean': 0., 'min': 0., 'max': 2.*torch.pi, 'fixed': False},
+                'r_ra':             {'mean': 0., 'min': -2., 'max': 2., 'fixed': False},
+                'r_dec':            {'mean': 0., 'min': -2., 'max': 2., 'fixed': False},
+                #'r_angular':        {'mean': 1., 'min': 0.1, 'max': 3., 'fixed': False},
+                #'r_polar':          {'mean': 0., 'min': 0., 'max': 2.*torch.pi, 'fixed': False},
             },
         },
     },
     'Instrument': 'MiYinBasicType',
-    #'TransmissionMap': 'DualChoppedDifferential',
-    'TransmissionMap': 'PolarDualChoppedDifferential',
+    'TransmissionMap': 'DualChoppedDifferential',
+    #'TransmissionMap': 'PolarDualChoppedDifferential',
     'Configuration':{
         'distance': 10,         # distance between Miyin and target [pc]
         'star_radius': 695500,  # Star radius [kilometer]
@@ -110,7 +110,7 @@ fit_amp_config = {
 
 def main():
     # Set device during generation
-    torch.set_default_device('cuda:1')
+    torch.set_default_device('cuda:2')
     torch.set_default_dtype(torch.float64)
     #torch.multiprocessing.set_start_method('spawn')
 
@@ -120,18 +120,15 @@ def main():
     data = obs_creator.generate()
 
     # Simulation
-    print("Generating MC ......")
     gen_amp = AmplitudeCreator(config=gen_amp_config)
     data['photon_electron'] = torch.poisson(gen_amp(data))
     data_handler = DataHandler(data)
     diff_data = data_handler.diff_data(obs_creator)
 
     # Estimation
-    print("Fitting ......")
-    fit_model = AmplitudeCreator(config=fit_amp_config)
-    #fit_model_compile = torch.compile(fit_model) # torch.compile doesn't support AMD Radeon VII (gfx906)
-    fitter = ENEFitter(fit_model, diff_data, multi_gpu=False)
-    fitter.search_planet('earth', draw=True, std_err=True, show=True, random_number=100, position_name=['earth.r_polar', 'earth.r_angular'], polar=True)
+    fitter = ENEFitter(AmplitudeCreator(config=fit_amp_config), diff_data, multi_gpu=True)
+    fitter.scan_search(scan_precision=200, scan_params=['amp.earth.r_ra', 'amp.earth.r_dec'])
+    #fitter.search_planet('earth', draw=True, std_err=True, show=True, random_number=100, position_name=['earth.r_polar', 'earth.r_angular'], polar=True)
 
     print(f"NLL without earth: {fitter.NLL.call_nll_nosig()}")
 

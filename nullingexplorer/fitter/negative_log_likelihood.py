@@ -16,6 +16,7 @@ class NegativeLogLikelihood(nn.Module, ABC):
         self.dataset = data
 
         self.__free_param_list = {}
+        self.__const_param_list = {}
         self.create_boundary()
         self.update_param_list()
 
@@ -25,10 +26,13 @@ class NegativeLogLikelihood(nn.Module, ABC):
 
     def update_param_list(self):
         self.__free_param_list = {}
+        self.__const_param_list = {}
         self.__boundary = {}
         for name, param in self.named_parameters():
             if param.requires_grad == True:
                 self.__free_param_list[name] = param
+            else:
+                self.__const_param_list[name] = param
 
         self.update_boundary()
     
@@ -42,13 +46,16 @@ class NegativeLogLikelihood(nn.Module, ABC):
                 if hasattr(sub_model, 'boundary'):
                     self.__total_boundary[key] = sub_model.boundary[path[-1]]
                     #print(f"Boundary: {key}, {self.__total_boundary[key]}")
+
+    def get_boundary(self, key):
+        return self.__total_boundary[key]
     
     def update_boundary(self):
         self.__boundary = {}
         for key in self.__free_param_list.keys():
             self.__boundary[key] = self.__total_boundary[key]
 
-    def get_boundary(self):
+    def get_boundaries(self):
         return [tuple(val.cpu().detach().numpy()) for val in self.__boundary.values()]
     
     def get_param_values(self):
@@ -96,13 +103,23 @@ class NegativeLogLikelihood(nn.Module, ABC):
                 #print(f"free parameter {name}")
         self.update_param_list()
 
-    def set_param_val(self, name, val):
-        if type(val) == torch.Tensor:
-            self.__free_param_list[name].data = val
-        elif type(val) in [int, float, list, np.float32, np.float64, np.ndarray]:
-            self.__free_param_list[name].data.fill_(val)
+    def set_param_val(self, name, val, constant=False):
+        if constant == False:
+            if type(val) == torch.Tensor:
+                self.__free_param_list[name].data = val
+            elif type(val) in [int, float, list, np.float32, np.float64, np.ndarray]:
+                self.__free_param_list[name].data.fill_(val)
+            else:
+                raise TypeError(f"Type {type(val)} not supported!")
+
         else:
-            raise TypeError(f"Type {type(val)} not supported!")
+            if type(val) == torch.Tensor:
+                self.__const_param_list[name].data = val
+            elif type(val) in [int, float, list, np.float32, np.float64, np.ndarray]:
+                self.__const_param_list[name].data.fill_(val)
+            else:
+                raise TypeError(f"Type {type(val)} not supported!")
+
 
     def forward(self):
         return self.call_nll()

@@ -1,6 +1,6 @@
 import numpy as np
 class Constants(object):
-    #_device = 'cuda:0'                          # Default device
+    #_device = 'cuda:0'                         # Default device
     _Planck_constant = 6.62607015e-34           # Planck constant (unit: J/Hz)
     _light_speed = 299792458.                   # speed of light (unit: m/s)
     _Boltzmann_constant = 1.380649e-23          # Boltzmann constant (unit: m^2 kg s^{-2} K^{-1})
@@ -10,3 +10,5 @@ class Constants(object):
     _radian_to_degree = 180. / np.pi            # Uit concersion, from radian to degree (unit: radian)
     _au_to_meter = 149597870700.                # Uit concersion, from AU to meter (unit: AU)
 
+    _sun_radius = 695500.                       # Radius of the sun (unit: kilometer)
+    _earth_radius = 6371.e3                     # Radius of the earth (unit: meter)  

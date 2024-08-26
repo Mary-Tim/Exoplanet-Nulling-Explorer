@@ -44,7 +44,10 @@ class PoissonSignificance():
         SNR = torch.sqrt(torch.sum(SNR_wl**2))
         return SNR
 
-    def gen_sig_pe(self):
+    def gen_sig_pe(self, sig_config = None):
+        if sig_config is not None:
+            self.__sig_amp_config = sig_config
+
         if self.__obs_config is None:
             raise ValueError('No observation config')
         if self.__sig_amp_config is None:
@@ -62,7 +65,10 @@ class PoissonSignificance():
         sig_pe = sig_data['photon_electron'].reshape(self.obs_creator.obs_num, self.obs_creator.spec_num).t()
         return sig_pe
 
-    def gen_bkg_pe(self):
+    def gen_bkg_pe(self, bkg_config = None):
+        if bkg_config is not None:
+            self.__bkg_amp_config = bkg_config
+
         if self.__obs_config is None:
             raise ValueError('No observation config')
         if self.__bkg_amp_config is None:

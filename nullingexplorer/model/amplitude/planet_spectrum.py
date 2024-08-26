@@ -23,8 +23,8 @@ class PlanetBlackBody(BaseAmplitude):
         # Free parameters
         self.radius = nn.Parameter(torch.tensor(6371.) * 1.e3) # Planet radius (unit: kilometer)
         self.temperature = nn.Parameter(torch.tensor(273.))  # Temperature of planet (unit: Kelvin)
-        self.ra  = nn.Parameter(torch.tensor(50.)) # Right ascension relative to the star (unit: radian)
-        self.dec = nn.Parameter(torch.tensor(50.)) # Declination relative to the star (unit: radian)
+        self.ra  = nn.Parameter(torch.tensor(50.)) # Right ascension relative to the star (unit: mas)
+        self.dec = nn.Parameter(torch.tensor(50.)) # Declination relative to the star (unit: mas)
 
         # Boundary of parameters
         self.register_buffer('bound_radius', torch.tensor([1.e5, 1.e7]))

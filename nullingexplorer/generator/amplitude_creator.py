@@ -124,4 +124,4 @@ class AmplitudeCreator(nn.Module):
                     if 'max' in val.keys():
                         model.boundary[key][1] = float(val['max'])
                     if 'fixed' in val.keys():
-                        getattr(model, key).requires_grad = bool(val['fixed'])
+                        getattr(model, key).requires_grad = not bool(val['fixed'])

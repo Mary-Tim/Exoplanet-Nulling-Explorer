@@ -7,7 +7,7 @@ import torch.multiprocessing as torchmp
 import copy
 import os
 import numpy as np
-from scipy.optimize import basinhopping
+from scipy.optimize import basinhopping, minimize
 from tqdm import tqdm
 from tensordict import TensorDict
 
@@ -38,8 +38,23 @@ class ENEFitter():
         self.__multi_gpu = multi_gpu
 
     @staticmethod
+    def scipy_minimize(NLL, init_val=None, min_method='L-BFGS-B', *args, **kargs):
+        boundary = NLL.get_boundaries()
+        boundary_lo = np.array([bound[0] for bound in boundary])
+        boundary_hi = np.array([bound[1] for bound in boundary])
+        if init_val is None:
+            init_val = np.random.uniform(low=boundary_lo, high=boundary_hi)
+        result = minimize(NLL.objective, 
+                    x0=init_val, 
+                    method = min_method,
+                    jac = True,
+                    bounds = boundary,
+                    options={'maxcor': 100, 'ftol': 1e-15, 'maxiter': 10000, 'maxls': 50})
+        return result
+
+    @staticmethod
     def scipy_basinhopping(NLL, stepsize=1, niter=1000, niter_success=50, init_val=None, min_method='L-BFGS-B', *args, **kargs):
-        boundary = NLL.get_boundary()
+        boundary = NLL.get_boundaries()
         boundary_lo = np.array([bound[0] for bound in boundary])
         boundary_hi = np.array([bound[1] for bound in boundary])
         if init_val is None:
@@ -47,7 +62,7 @@ class ENEFitter():
         result = basinhopping(NLL.objective, 
                     x0=init_val, 
                     minimizer_kwargs={'method': min_method, 'bounds': boundary, 'jac': True, 
-                                      'options': {'maxcor': 100, 'ftol': 1e-15, 'maxiter': 10000, 'maxls': 50}}, 
+                                        'options': {'maxcor': 100, 'ftol': 1e-15, 'maxiter': 10000, 'maxls': 50}}, 
                     stepsize=stepsize,
                     niter=niter,
                     niter_success=niter_success)
@@ -62,7 +77,7 @@ class ENEFitter():
             scan_result = np.zeros((iter_number, len(fit_params)))
         else:
             scan_result = np.zeros((iter_number, NLL.num_of_params))
-        boundary = NLL.get_boundary()
+        boundary = NLL.get_boundaries()
         # For each attempt of the random search 
         for i in tqdm(range(iter_number)):
             flag = False                                      
@@ -179,6 +194,52 @@ class ENEFitter():
             self.fit_result.set_item('scan_result', np.vstack(result_dict['scan_result']))
 
         return result
+
+    def scan_search(self, scan_precision = 100, scan_params = [], *args, **kwargs):
+        if len(scan_params) != 2:
+            raise ValueError(f"Required 2 scan parameters, {len(scan_params)} inputted.")
+
+        self.NLL.fix_param(scan_params)
+
+        x_boundary = self.NLL.get_boundary(scan_params[0])
+        y_boundary = self.NLL.get_boundary(scan_params[1])
+
+        x_list = torch.linspace(x_boundary[0], x_boundary[1], scan_precision)
+        y_list = torch.linspace(y_boundary[0], y_boundary[1], scan_precision)
+        x_grid, y_grid = torch.meshgrid(x_list, y_list, indexing='ij')
+
+        points = torch.stack((x_grid.flatten(), y_grid.flatten()), -1)
+        nll_grid = np.zeros(len(points), dtype=np.float64)
+
+        result = None
+        best_point = None
+        for i, point in tqdm(enumerate(points), total=len(points)):
+            flag = False
+            retry_times = 0
+            self.NLL.set_param_val(scan_params[0], point[0], constant=True)
+            self.NLL.set_param_val(scan_params[1], point[1], constant=True)
+            while(not flag):                                  
+                this_result = ENEFitter.scipy_minimize(self.NLL)
+                flag = this_result.success
+                if flag == False:
+                    #print(f"Fail to find the minimum result, retry. NLL: {this_result.fun}")
+                    retry_times += 1
+                if(retry_times > 1000):
+                    print("All retry fails! Move to the next point.")
+                    break
+            nll_grid[i] = this_result.fun
+        if result == None:
+            result = this_result
+            best_point = point
+        elif this_result.fun < result.fun:
+            result = this_result
+            best_point = point
+
+        self.fit_result.draw_meshgrid_result(   x_grid.cpu().detach().numpy(), 
+                                                y_grid.cpu().detach().numpy(), 
+                                                nll_grid.reshape(scan_precision, scan_precision).cpu().detach().numpy())
+
+        return result, best_point
 
     def precision_search(self, init_val=None, fit_params = [], *args, **kwargs):
         """

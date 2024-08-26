@@ -80,7 +80,7 @@ class LocalZodiacalDustMatrix(LocalZodiacalDust):
             theta_hi = 0.5 * point['wl_hi'] / self.mirror_diameter
             ra_interp = torch.linspace(-theta_hi, theta_hi, vol_number)
             d_ra = torch.abs(ra_interp[1] - ra_interp[0])
-            ra_mesh, dec_mesh = torch.meshgrid(ra_interp, ra_interp)
+            ra_mesh, dec_mesh = torch.meshgrid(ra_interp, ra_interp, indexing='ij')
             ra_mesh = ra_mesh.flatten()
             dec_mesh = dec_mesh.flatten()
             intg_trans_map = lambda ra, dec: self.trans_map(ra, dec, point['wl_mid'], point) * self.instrument.field_of_view(ra, dec, point['wl_mid'])
