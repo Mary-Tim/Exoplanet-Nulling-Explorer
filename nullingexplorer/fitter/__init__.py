@@ -1,2 +1,3 @@
 from .negative_log_likelihood import *
-from .fitter import ENEFitter
+from .scipy_fitter import ENEFitter
+from .minuit_fitter import MinuitFitter

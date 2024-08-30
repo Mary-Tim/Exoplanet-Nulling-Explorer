@@ -3,6 +3,7 @@ import h5py
 import numpy as np
 import mplhep
 import yaml
+import iminuit
 
 from datetime import datetime
 from scipy import optimize, stats
@@ -55,6 +56,29 @@ class FitResult():
         self.__result['param_name'] = [name[name.find(".")+1:] for name in self.nll_model.free_param_list.keys()]
         # The fit result of parameters
         self.__result['param_val'] = scipy_result.x
+        # set units
+        self.__result['param_unit'] = []
+        for name in self.__result['param_name']:
+            param_end = name.split('.')[-1]
+            if param_end in self.__unit.keys():
+                self.__result['param_unit'].append(self.__unit[param_end])
+            else:
+                self.__result['param_unit'].append('')
+
+    def load_minuit_result(self, nll_model, minuit_result: iminuit.Minuit):
+    #def save_fit_result(self, nll_model: NegativeLogLikelihood, minuit_result: optimize.OptimizeResult):
+        self.nll_model = nll_model
+
+        # Set model parameters to the final values
+        for name, val in zip(self.nll_model.free_param_list.keys(), minuit_result.values):
+            self.nll_model.set_param_val(name, val)
+        # The final NLL
+        self.__result['best_nll'] = minuit_result.fval
+        # The name of parameters
+        #self.__result['param_name'] = self.nll_model.free_param_list.keys()
+        self.__result['param_name'] = [name[name.find(".")+1:] for name in self.nll_model.free_param_list.keys()]
+        # The fit result of parameters
+        self.__result['param_val'] = np.array(minuit_result.values)
         # set units
         self.__result['param_unit'] = []
         for name in self.__result['param_name']:
@@ -119,7 +143,6 @@ class FitResult():
             dataset_list = file.keys()
             for ds in dataset_list:
                 result.set_item(ds, file[ds][:])
-            file.close()
 
         if 'param_name' in result.keys():
             param_name = [name.decode("utf-8") for name in result.get_item('param_name')]

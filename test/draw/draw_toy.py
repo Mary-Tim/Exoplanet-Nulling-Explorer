@@ -15,7 +15,7 @@ from scipy import stats
 
 plt.style.use(mplhep.style.LHCb2)
 
-nbins = 20
+nbins = 25
 draw_sigma = 4
 init_val = {
     'earth.r_radius':       {'mu': 0., 'sigma': 0.2}, 
@@ -25,18 +25,24 @@ init_val = {
 }
 limits = {
     'earth.r_radius':       {'mu': (-0.50, 0.50), 'sigma': (5e-3, 1e-0)}, 
-    'earth.r_temperature':  {'mu': (-0.20, 0.20), 'sigma': (5e-3, 1e-0)}, 
+    'earth.r_temperature':  {'mu': (-0.20, 0.20), 'sigma': (5e-3, 1e2)}, 
     'earth.r_angular':      {'mu': (-0.02, 0.02), 'sigma': (5e-2, 1e1)}, 
     'earth.r_polar':        {'mu': (-0.02, 0.02), 'sigma': (5e-4, 5e-1)}
 }
 # 360, 1e6
-#hdf5_path = "results/Toy_20240806_173118/toy_MC_result.hdf5"
+#hdf5_path = "../results/Toy_20240806_173118/toy_MC_result.hdf5"
 # 10, 1e6
 #hdf5_path = "results/Toy_20240807_163626/toy_MC_result.hdf5"
 # 120, 2e6
 #hdf5_path = "results/Toy_20240808_172237/toy_MC_result.hdf5"
 # LIFE 2m
-hdf5_path = "results/Toy_20240819_145106/toy_MC_result.hdf5"
+#hdf5_path = "../results/Toy_20240819_145106/toy_MC_result.hdf5"
+hdf5_path = "../results/Toy_20240826_172237/toy_MC_result.hdf5"
+
+x_titles = ['Radius [$R_{{\\rm earth}}$]',
+            'Temperature [K]',
+            'Angular Separation [mas]',
+            'Polar Angle [radian]']
 
 def fit_gauss(data, init_mu=0., init_sigma=0.1):
     def pdf(x, mu, sigma):
@@ -61,10 +67,11 @@ if 'param_name' in result.keys():
 
 truth_convert = np.zeros((len(result["fitted_val"]), 4))
 truth_convert[:, 0] = result["true_val"][:, 0] / 6371e3
-truth_convert[:, 1] = result["true_val"][:, 1] / 285.
+truth_convert[:, 1] = result["true_val"][:, 1]
 truth_convert[:, 2], truth_convert[:, 3] = to_polar(result["true_val"][:, 2], result["true_val"][:, 3])
 truth_convert[:, 2] = truth_convert[:, 2]
 
+result['fitted_val'][:, 1] = result['fitted_val'][:, 1] * 285.
 result['fitted_val'][:, 2] = result['fitted_val'][:, 2] * 100.
 
 truth_convert[truth_convert[:,3]<0, 3] = truth_convert[truth_convert[:,3]<0, 3] + 2*np.pi
@@ -91,7 +98,7 @@ for i, name in enumerate(result["param_name"]):
     #ax.errorbar(bins[:-1], counts, yerr=errors, marker='ok', color='black', capsize=5)
     ax.errorbar(bins[:-1], counts, yerr=errors, fmt='ok', markersize=10, capsize=5)
     #ax.stairs(counts, bins)
-    ax.set_xlabel(name)
+    ax.set_xlabel(x_titles[i])
 
     bin_width = (range_hi - range_lo) / float(nbins)
     x_line = np.linspace(range_lo, range_hi, 100)

@@ -7,7 +7,7 @@ import torch.multiprocessing as torchmp
 import copy
 import os
 import numpy as np
-from scipy.optimize import basinhopping, minimize
+from iminuit import Minuit
 from tqdm import tqdm
 from tensordict import TensorDict
 
@@ -15,15 +15,16 @@ from nullingexplorer.utils import Constants as cons
 from nullingexplorer.fitter import GaussianNLL, PoissonNLL
 from nullingexplorer.model.amplitude import BaseAmplitude
 from nullingexplorer.io import FitResult
+from nullingexplorer.fitter import ENEFitter
 
 
-class ENEFitter():
-    __max_gpus = 10
+class MinuitFitter(ENEFitter):
     NLL_dict = {
         'gaussian': GaussianNLL,
         'poisson': PoissonNLL
     }
-    def __init__(self, amp: BaseAmplitude, data: TensorDict, NLL_type = 'gaussian', min_method='L-BFGS-B', check_boundary = True, multi_gpu = False, *args, **kwargs):
+    def __init__(self, amp: BaseAmplitude, data: TensorDict, NLL_type = 'gaussian', multi_gpu = False, *args, **kwargs):
+        super().__init__(amp, data, NLL_type, multi_gpu, *args, **kwargs)
         self.amp = amp
         self.data = data.detach()
         if NLL_type not in ENEFitter.NLL_dict.keys():
@@ -31,42 +32,32 @@ class ENEFitter():
         self.__NLL_type = NLL_type
         self.NLL = ENEFitter.NLL_dict[self.__NLL_type](self.amp, self.data)
         self.fit_result = FitResult(*args, **kwargs)
-        self.min_method = min_method
-        self.check_boundary = check_boundary
 
         self.__n_gpus = torch.cuda.device_count()
         self.__multi_gpu = multi_gpu
 
     @staticmethod
-    def scipy_minimize(NLL, init_val=None, min_method='L-BFGS-B', *args, **kargs):
+    def iminuit_minimize(NLL, init_val = None, minos=False, *args, **kwargs):
         boundary = NLL.get_boundaries()
         boundary_lo = np.array([bound[0] for bound in boundary])
         boundary_hi = np.array([bound[1] for bound in boundary])
         if init_val is None:
             init_val = np.random.uniform(low=boundary_lo, high=boundary_hi)
-        result = minimize(NLL.objective, 
-                    x0=init_val, 
-                    method = min_method,
-                    jac = True,
-                    bounds = boundary,
-                    options={'maxcor': 100, 'ftol': 1e-15, 'maxiter': 10000, 'maxls': 50})
-        return result
 
-    @staticmethod
-    def scipy_basinhopping(NLL, stepsize=1, niter=1000, niter_success=50, init_val=None, min_method='L-BFGS-B', *args, **kargs):
-        boundary = NLL.get_boundaries()
-        boundary_lo = np.array([bound[0] for bound in boundary])
-        boundary_hi = np.array([bound[1] for bound in boundary])
-        if init_val is None:
-            init_val = np.random.uniform(low=boundary_lo, high=boundary_hi)
-        result = basinhopping(NLL.objective, 
-                    x0=init_val, 
-                    minimizer_kwargs={'method': min_method, 'bounds': boundary, 'jac': True, 
-                                        'options': {'maxcor': 100, 'ftol': 1e-15, 'maxiter': 10000, 'maxls': 50}}, 
-                    stepsize=stepsize,
-                    niter=niter,
-                    niter_success=niter_success)
-        return result
+        #m = Minuit(NLL.call_nll_numpy, init_val)
+        m = Minuit(NLL.call_nll_numpy, init_val, grad=NLL.call_grad_numpy)
+        m.errordef = Minuit.LIKELIHOOD
+        m.limits = boundary
+        m.tol = 1e-10
+        #m.strategy = 1
+        #m.simplex()
+        #m.scan()
+        m.migrad(iterate=10, use_simplex=True)
+        if minos:
+            m.hesse()
+            m.minos()
+        #m.minos()
+        return m
 
     def a_search(self, NLL, iter_number, fit_params=[], *args, **kwargs):
         result = None
@@ -80,35 +71,36 @@ class ENEFitter():
         boundary = NLL.get_boundaries()
         # For each attempt of the random search 
         for i in tqdm(range(iter_number)):
+        #while(i_iter < iter_number):
             flag = False                                      
             retry_times = 0
             # Continue attempting until a successful minimization result is found
             while(not flag):                                  
-                this_result = ENEFitter.scipy_basinhopping(NLL=NLL, min_method=self.min_method, *args, **kwargs)
-                flag = this_result.success
+                this_result = MinuitFitter.iminuit_minimize(NLL=NLL, *args, **kwargs)
+                flag = this_result.valid
                 if flag == False:
                     retry_times += 1
                 if(retry_times > 100):
                     print("All retry fails! Move to the next point.")
                     break
-            # Check if any parameter reach to the boundary
-            if self.check_boundary:
-                param_val = this_result.x
-                reach_to_boundary = False
-                for val, bound in zip(param_val, boundary):
-                    if np.fabs(val - bound[0])<1e-3 or np.fabs(val - bound[1])<1e-3:
-                        reach_to_boundary = True
-                        break
-                if reach_to_boundary:
-                    continue
+            ## Check if any parameter reach to the boundary
+            #if self.check_boundary:
+            #    reach_to_boundary = False
+            #    for val, bound in zip(this_result.values, boundary):
+            #        if np.fabs(val - bound[0])<1e-3 or np.fabs(val - bound[1])<1e-3:
+            #            reach_to_boundary = True
+            #            break
+            #    if reach_to_boundary:
+            #        continue
             # Record the negative log-likelihood value and parameter values of this attempt
-            scan_nll[i] = this_result.fun
-            for j in range(len(this_result.x)):
-                scan_result[i, j] = this_result.x[j]
+            scan_nll[i] = this_result.fval
+            #print(this_result.values)
+            for j, val in enumerate(this_result.values):
+                scan_result[i, j] = val
             # Update the best result
             if result == None:
                 result = this_result
-            elif this_result.fun < result.fun:
+            elif this_result.fval < result.fval:
                 result = this_result
         # Store search results in fit_result
         index = np.nonzero(scan_nll)
@@ -119,14 +111,18 @@ class ENEFitter():
         os.environ['MASTER_PORT'] = '12355'
         dist.init_process_group("gloo", rank=rank, world_size=self.__n_gpus)
 
-        NLL_list[rank].to(rank)
-        NLL_list[rank].amp.to(rank)
-        NLL_list[rank].dataset = NLL_list[rank].dataset.to(rank)
-        result, scan_nll, scan_result = self.a_search(NLL=NLL_list[rank], iter_number=iter_number, fit_params=fit_params, stepsize=stepsize, niter=niter, niter_success=niter_success)
+        with torch.cuda.device(f'cuda:{rank}'):
 
-        #print(f"Scan_NLL from cuda:{rank}: {scan_nll}")
-        self.result_queue.put((result, scan_nll, scan_result))
-        print(f"Save cuda:{rank} result to queue.")
+            NLL_list[rank].to(rank)
+            NLL_list[rank].amp.to(rank)
+            NLL_list[rank].dataset = NLL_list[rank].dataset.to(rank)
+            result, scan_nll, scan_result = self.a_search(NLL=NLL_list[rank], iter_number=iter_number, fit_params=fit_params, stepsize=stepsize, niter=niter, niter_success=niter_success)
+
+            #print(f"Scan_NLL from cuda:{rank}: {scan_nll}")
+            self.result_queue.put((copy.deepcopy(result), scan_nll, scan_result))
+            print(f"Save cuda:{rank} result to queue.")
+
+            #torch.cuda.empty_cache()
 
         dist.destroy_process_group()
 
@@ -152,8 +148,6 @@ class ENEFitter():
         else:
             if self.__n_gpus < 2:
                 raise ValueError("Number of avaiable CUDA driver less than 2, Please disable MultiGPU mode!")
-            if self.__n_gpus > ENEFitter.__max_gpus:
-                raise ValueError("Number of avaiable CUDA driver larger than ENEFitter.__max_gpus. Please enlarge it!")
 
             # Multiprocessing
             NLL_list = [ENEFitter.NLL_dict[self.__NLL_type](copy.deepcopy(self.amp), self.data) for _ in range(self.__n_gpus)]
@@ -176,9 +170,9 @@ class ENEFitter():
                 result_dict['result'][i] = copy.deepcopy(temp_result[0])
                 result_dict['scan_nll'][i] = copy.deepcopy(temp_result[1])
                 result_dict['scan_result'][i] = copy.deepcopy(temp_result[2])
-            self.result_queue.task_done()
 
             # End of Multiprocesses
+            self.result_queue.task_done()
             ctx.join()
 
             # Find best result and save all
@@ -188,7 +182,7 @@ class ENEFitter():
                     if result is None:
                         result = re
                     else:
-                        if re.fun < result.fun:
+                        if re.fval < result.fval:
                             result = re
             self.fit_result.set_item('scan_nll', np.hstack(result_dict['scan_nll']))
             self.fit_result.set_item('scan_result', np.vstack(result_dict['scan_result']))
@@ -219,7 +213,7 @@ class ENEFitter():
             self.NLL.set_param_val(scan_params[0], point[0], constant=True)
             self.NLL.set_param_val(scan_params[1], point[1], constant=True)
             while(not flag):                                  
-                this_result = ENEFitter.scipy_minimize(self.NLL)
+                this_result = MinuitFitter.iminuit_minimize(self.NLL)
                 flag = this_result.success
                 if flag == False:
                     #print(f"Fail to find the minimum result, retry. NLL: {this_result.fun}")
@@ -227,11 +221,11 @@ class ENEFitter():
                 if(retry_times > 1000):
                     print("All retry fails! Move to the next point.")
                     break
-            nll_grid[i] = this_result.fun
+            nll_grid[i] = this_result.fval
         if result == None:
             result = this_result
             best_point = point
-        elif this_result.fun < result.fun:
+        elif this_result.fval < result.fval:
             result = this_result
             best_point = point
 
@@ -259,7 +253,7 @@ class ENEFitter():
             init_val = [val.data.item() for val in self.NLL.free_param_list.values()]
         if len(fit_params) != 0:
             self.NLL.config_fit_params(fit_params)
-        result = ENEFitter.scipy_basinhopping(self.NLL, min_method=self.min_method, init_val=init_val, *args, **kwargs)
+        result = MinuitFitter.iminuit_minimize(self.NLL, min_method=self.min_method, init_val=init_val, minos=True, *args, **kwargs)
         return result
 
     def search_planet(self, amp_name:str, std_err=False, draw=False, show=False, *args, **kwargs):
@@ -277,11 +271,11 @@ class ENEFitter():
             print(f"Planet {amp_name} not found! return None.")
             return None
 
-        result = self.precision_search(fit_params=planet_params, init_val=list(result.x), 
+        result = self.precision_search(fit_params=planet_params, init_val=list(result.values), 
                                        stepsize=0.1, niter=10000, niter_success=500, *args, **kwargs)
-        for i, name in enumerate(planet_params):
-            self.NLL.set_param_val(name, result.x[i])
-        self.fit_result.load_fit_result(self.NLL, result)
+        for name, val in zip(planet_params, result.values):
+            self.NLL.set_param_val(name, val)
+        self.fit_result.load_minuit_result(self.NLL, result)
         if std_err == True:
             self.fit_result.evaluate_std_error()
         self.fit_result.print_result()
@@ -300,11 +294,11 @@ class ENEFitter():
                 print("No result found! return None.")
                 return None
             else:
-                result = self.precision_search(init_val=list(result.x), stepsize=0.1, niter=10000, 
+                result = self.precision_search(init_val=list(result.values), stepsize=0.1, niter=10000, 
                                             niter_success=500, *args, **kwargs)
         else:
             result = self.precision_search(stepsize=0.1, niter=10000, niter_success=500, *args, **kwargs)
-        self.fit_result.load_fit_result(self.NLL, result)
+        self.fit_result.load_minuit_result(self.NLL, result)
         if if_std_err:
             self.fit_result.evaluate_std_error()
         self.fit_result.print_result()

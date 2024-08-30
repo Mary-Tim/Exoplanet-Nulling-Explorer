@@ -66,6 +66,7 @@ class LocalZodiacalDustMatrix(LocalZodiacalDust):
     def __init__(self):
         super().__init__()
         self.spectrum = InterpBlackBody()
+        self.register_buffer('vol_number', torch.tensor(500, dtype=int))  
 
     def init_local_zodi(self, data) -> torch.Tensor:
         dust_emission   = self.spectrum(self.effective_temperature, data)
@@ -75,10 +76,9 @@ class LocalZodiacalDustMatrix(LocalZodiacalDust):
                                 * torch.sqrt(torch.pi / torch.arccos(torch.cos(self.relative_lon) * torch.cos(self.target_lat))\
                                              / (torch.sin(self.target_lat)**2 + 0.36 * (data['wl_mid']/11e-6)**(-0.8)*torch.cos(self.target_lat)**2)) * fov_area
 
-        vol_number = 500
         def trans_map_scale(point):
             theta_hi = 0.5 * point['wl_hi'] / self.mirror_diameter
-            ra_interp = torch.linspace(-theta_hi, theta_hi, vol_number)
+            ra_interp = torch.linspace(-theta_hi, theta_hi, self.vol_number)
             d_ra = torch.abs(ra_interp[1] - ra_interp[0])
             ra_mesh, dec_mesh = torch.meshgrid(ra_interp, ra_interp, indexing='ij')
             ra_mesh = ra_mesh.flatten()
