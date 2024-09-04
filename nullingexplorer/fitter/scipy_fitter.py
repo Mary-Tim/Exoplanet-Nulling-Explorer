@@ -37,15 +37,6 @@ class ENEFitter():
         self.__multi_gpu = multi_gpu
 
     @staticmethod
-    def iminuit_minimize(NLL, init_val = None, *args, **kwargs):
-        boundary = NLL.get_boundaries()
-        boundary_lo = np.array([bound[0] for bound in boundary])
-        boundary_hi = np.array([bound[1] for bound in boundary])
-        if init_val is None:
-            init_val = np.random.uniform(low=boundary_lo, high=boundary_hi)
-
-
-    @staticmethod
     def scipy_minimize(NLL, init_val=None, min_method='L-BFGS-B', *args, **kwargs):
         boundary = NLL.get_boundaries()
         boundary_lo = np.array([bound[0] for bound in boundary])
@@ -61,7 +52,7 @@ class ENEFitter():
         return result
 
     @staticmethod
-    def scipy_basinhopping(NLL, stepsize=0.1, niter=100, niter_success=20, maxls=50, init_val=None, min_method='L-BFGS-B', *args, **kargs):
+    def scipy_basinhopping(NLL, stepsize=10, niter=100, niter_success=20, maxls=20, init_val=None, min_method='L-BFGS-B', *args, **kargs):
         boundary = NLL.get_boundaries()
         boundary_lo = np.array([bound[0] for bound in boundary])
         boundary_hi = np.array([bound[1] for bound in boundary])
@@ -121,7 +112,7 @@ class ENEFitter():
         index = np.nonzero(scan_nll)
         return result, scan_nll[index], scan_result[index]
 
-    def one_process(self, rank, NLL_list, iter_number, fit_params, stepsize=1, niter=1000, niter_success=50):
+    def one_process(self, rank, NLL_list, iter_number, fit_params, *args, **kwargs):
         os.environ['MASTER_ADDR'] = 'localhost'
         os.environ['MASTER_PORT'] = '12355'
         dist.init_process_group("gloo", rank=rank, world_size=self.__n_gpus)
@@ -129,7 +120,7 @@ class ENEFitter():
         NLL_list[rank].to(rank)
         NLL_list[rank].amp.to(rank)
         NLL_list[rank].dataset = NLL_list[rank].dataset.to(rank)
-        result, scan_nll, scan_result = self.a_search(NLL=NLL_list[rank], iter_number=iter_number, fit_params=fit_params, stepsize=stepsize, niter=niter, niter_success=niter_success)
+        result, scan_nll, scan_result = self.a_search(NLL=NLL_list[rank], iter_number=iter_number, fit_params=fit_params, *args, **kwargs)
 
         #print(f"Scan_NLL from cuda:{rank}: {scan_nll}")
         self.result_queue.put((result, scan_nll, scan_result))
@@ -137,7 +128,7 @@ class ENEFitter():
 
         dist.destroy_process_group()
 
-    def random_search(self, random_number = 50, fit_params = [], stepsize=1, niter=1000, niter_success=50, *args, **kwargs):
+    def random_search(self, random_number = 50, fit_params = [], *args, **kwargs):
         """
         Utilizes a random search method to find the parameter combination with the minimum negative log-likelihood value.
         
@@ -173,7 +164,7 @@ class ENEFitter():
                 'scan_result': [None] * self.__n_gpus
             }
             self.result_queue = torchmp.JoinableQueue()
-            ctx = torchmp.spawn(self.one_process, args=(NLL_list, iter_number, fit_params, stepsize, niter, niter_success), nprocs=self.__n_gpus, join=False)
+            ctx = torchmp.spawn(self.one_process, args=(NLL_list, iter_number, fit_params), nprocs=self.__n_gpus, join=False)
 
             # Read results from subprocesses
             for i in range(self.__n_gpus):
@@ -294,6 +285,7 @@ class ENEFitter():
         if draw == True:
             self.fit_result.draw_scan_result(file_name=f"{amp_name}", show=show, *args, **kwargs)
 
+        self.fit_result.save(name=amp_name)
         return result
 
     def fit_all(self, if_random=False, if_std_err=True, *args, **kwargs):
@@ -313,5 +305,6 @@ class ENEFitter():
         if if_std_err:
             self.fit_result.evaluate_std_error()
         self.fit_result.print_result()
+        self.fit_result.save(name="all")
 
         return self.fit_result.result

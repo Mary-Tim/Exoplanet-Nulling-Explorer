@@ -141,3 +141,5 @@ if __name__ == '__main__':
     # results/Job_20240830_092628 18个点， maxls=50, step=1
     # results/Job_20240830_092628 24个点， maxls=50, step=1
     # results/Job_20240830_092628 18个点， maxls=50, step=10
+    # results/Job_20240902_091351 75/16000 9:05, stepsize=1, niter=100, success=20, maxls=50
+    # results/Job_20240903_140611 69/16000 5:08, stepsize=1, niter=100, success=20, maxls=20

@@ -108,22 +108,25 @@ class FitResult():
 
         return self.__result[key]
 
-    def save(self, save_type = 'hdf5'):
+    def save(self, name=None, save_type = 'hdf5'):
+        save_name = f"result"
+        if name is not None:
+            save_name = f"{save_name}_{name}"
         if save_type == 'hdf5':
-            self.__auto_save_hdf5()
+            self.__auto_save_hdf5(save_name)
         elif save_type == 'fits':
-            self.__auto_save_fits()
+            self.__auto_save_fits(save_name)
         else:
             raise TypeError('File format not support')
-        print(f"Save fit result to: {self.__output_path}/result.{save_type}")
+        print(f"Save fit result to: {self.__output_path}/{save_name}.{save_type}")
 
 
-    def __auto_save_hdf5(self):
-        with h5py.File(f"{self.__output_path}/result.hdf5", 'w') as file:
+    def __auto_save_hdf5(self, name):
+        with h5py.File(f"{self.__output_path}/{name}.hdf5", 'w') as file:
             for key, val in self.__result.items():
                 file.create_dataset(key, data=val)
 
-    def __auto_save_fits(self):
+    def __auto_save_fits(self, name):
         '''
         TODO: 类比__auto_save_hdf5，将self.__result存入fits文件
         '''
@@ -138,11 +141,11 @@ class FitResult():
 
     @classmethod
     def load(cls, path: str):
-        result = cls()
+        result = cls(auto_save=False)
         with h5py.File(f"{path}", 'r') as file:
             dataset_list = file.keys()
             for ds in dataset_list:
-                result.set_item(ds, file[ds][:])
+                result.set_item(ds, file[ds][()])
 
         if 'param_name' in result.keys():
             param_name = [name.decode("utf-8") for name in result.get_item('param_name')]
