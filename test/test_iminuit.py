@@ -6,7 +6,7 @@ import torch
 from nullingexplorer.generator import AmplitudeCreator, ObservationCreator
 from nullingexplorer.utils import Constants as cons
 from nullingexplorer.io import DataHandler
-from nullingexplorer.fitter import ENEFitter
+from nullingexplorer.fitter import MinuitFitter
 
 obs_config = {
     'Spectrum':{
@@ -110,9 +110,9 @@ fit_amp_config = {
 
 def main():
     # Set device during generation
-    torch.set_default_device('cuda:1')
+    torch.set_default_device('cuda:0')
     torch.set_default_dtype(torch.float64)
-    torch.multiprocessing.set_start_method('spawn')
+    torch.multiprocessing.set_start_method('spawn', force=True)
 
     # Observation Config
     obs_creator = ObservationCreator()
@@ -130,16 +130,10 @@ def main():
     print("Fitting ......")
     fit_model = AmplitudeCreator(config=fit_amp_config)
     #fit_model_compile = torch.compile(fit_model) # torch.compile doesn't support AMD Radeon VII (gfx906)
-    fitter = ENEFitter(fit_model, diff_data, multi_gpu=True)
-    fitter.search_planet('earth', draw=True, std_err=True, show=True, random_number=16000, position_name=['earth.r_polar', 'earth.r_angular'], polar=True)
+    fitter = MinuitFitter(fit_model, diff_data, multi_gpu=True)
+    fitter.search_planet('earth', draw=True, std_err=True, show=True, random_number=4000, position_name=['earth.r_polar', 'earth.r_angular'], polar=True)
 
     print(f"NLL without earth: {fitter.NLL.call_nll_nosig()}")
 
 if __name__ == '__main__':
     main()
-
-    # results/Job_20240830_092628 18个点， maxls=50, step=1
-    # results/Job_20240830_092628 24个点， maxls=50, step=1
-    # results/Job_20240830_092628 18个点， maxls=50, step=10
-    # results/Job_20240902_091351 75/16000 9:05, stepsize=1, niter=100, success=20, maxls=50
-    # results/Job_20240903_140611 69/16000 5:08, stepsize=1, niter=100, success=20, maxls=20

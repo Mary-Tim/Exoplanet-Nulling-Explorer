@@ -128,6 +128,23 @@ class NegativeLogLikelihood(nn.Module, ABC):
     def call_nll(self):
         return -1
 
+    def call_nll_numpy(self, params):
+        if self.dataset == None:
+            raise ValueError('Dataset should be initialized before call the NLL!')
+        for val, par in zip(params, self.__free_param_list.values()):
+            par.data.fill_(val)
+        NLL = self.call_nll()
+        return NLL.cpu().detach().numpy()
+
+    def call_grad_numpy(self, params):
+        if self.dataset == None:
+            raise ValueError('Dataset should be initialized before call the NLL!')
+        for val, par in zip(params, self.__free_param_list.values()):
+            par.data.fill_(val)
+        NLL = self.call_nll()
+        grad = torch.stack(atg.grad(NLL, self.__free_param_list.values()), dim=0)
+        return grad.cpu().detach().numpy()
+
     def objective(self, params):
         if self.dataset == None:
             raise ValueError('Dataset should be initialized before call the NLL!')
@@ -135,6 +152,7 @@ class NegativeLogLikelihood(nn.Module, ABC):
             par.data.fill_(val)
             #par.data = torch.tensor(val)
         NLL = self.call_nll()
+        #grad = self.call_grad(NLL)
         #return NLL.cpu().detach().numpy()
         grad = torch.stack(atg.grad(NLL, self.__free_param_list.values()), dim=0)
         return NLL.cpu().detach().numpy(), grad.cpu().detach().numpy()

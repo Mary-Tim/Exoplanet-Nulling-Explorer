@@ -3,6 +3,7 @@ import h5py
 import numpy as np
 import mplhep
 import yaml
+import iminuit
 
 from datetime import datetime
 from scipy import optimize, stats
@@ -64,6 +65,29 @@ class FitResult():
             else:
                 self.__result['param_unit'].append('')
 
+    def load_minuit_result(self, nll_model, minuit_result: iminuit.Minuit):
+    #def save_fit_result(self, nll_model: NegativeLogLikelihood, minuit_result: optimize.OptimizeResult):
+        self.nll_model = nll_model
+
+        # Set model parameters to the final values
+        for name, val in zip(self.nll_model.free_param_list.keys(), minuit_result.values):
+            self.nll_model.set_param_val(name, val)
+        # The final NLL
+        self.__result['best_nll'] = minuit_result.fval
+        # The name of parameters
+        #self.__result['param_name'] = self.nll_model.free_param_list.keys()
+        self.__result['param_name'] = [name[name.find(".")+1:] for name in self.nll_model.free_param_list.keys()]
+        # The fit result of parameters
+        self.__result['param_val'] = np.array(minuit_result.values)
+        # set units
+        self.__result['param_unit'] = []
+        for name in self.__result['param_name']:
+            param_end = name.split('.')[-1]
+            if param_end in self.__unit.keys():
+                self.__result['param_unit'].append(self.__unit[param_end])
+            else:
+                self.__result['param_unit'].append('')
+
     def evaluate_std_error(self):
         # Standard uncertainties
         self.__result['std_err'] = self.nll_model.std_error().cpu().detach().numpy()
@@ -84,22 +108,25 @@ class FitResult():
 
         return self.__result[key]
 
-    def save(self, save_type = 'hdf5'):
+    def save(self, name=None, save_type = 'hdf5'):
+        save_name = f"result"
+        if name is not None:
+            save_name = f"{save_name}_{name}"
         if save_type == 'hdf5':
-            self.__auto_save_hdf5()
+            self.__auto_save_hdf5(save_name)
         elif save_type == 'fits':
-            self.__auto_save_fits()
+            self.__auto_save_fits(save_name)
         else:
             raise TypeError('File format not support')
-        print(f"Save fit result to: {self.__output_path}/result.{save_type}")
+        print(f"Save fit result to: {self.__output_path}/{save_name}.{save_type}")
 
 
-    def __auto_save_hdf5(self):
-        with h5py.File(f"{self.__output_path}/result.hdf5", 'w') as file:
+    def __auto_save_hdf5(self, name):
+        with h5py.File(f"{self.__output_path}/{name}.hdf5", 'w') as file:
             for key, val in self.__result.items():
                 file.create_dataset(key, data=val)
 
-    def __auto_save_fits(self):
+    def __auto_save_fits(self, name):
         '''
         TODO: 类比__auto_save_hdf5，将self.__result存入fits文件
         '''
@@ -114,11 +141,15 @@ class FitResult():
 
     @classmethod
     def load(cls, path: str):
-        result = cls()
+        result = cls(auto_save=False)
         with h5py.File(f"{path}", 'r') as file:
             dataset_list = file.keys()
             for ds in dataset_list:
+<<<<<<< HEAD
                 result.set_item(ds, file[ds][:])
+=======
+                result.set_item(ds, file[ds][()])
+>>>>>>> origin
 
         if 'param_name' in result.keys():
             param_name = [name.decode("utf-8") for name in result.get_item('param_name')]

@@ -30,13 +30,14 @@ limits = {
     'earth.r_polar':        {'mu': (-0.02, 0.02), 'sigma': (5e-4, 5e-1)}
 }
 # 360, 1e6
-hdf5_path = "../results/Toy_20240806_173118/toy_MC_result.hdf5"
+#hdf5_path = "../results/Toy_20240806_173118/toy_MC_result.hdf5"
 # 10, 1e6
 #hdf5_path = "results/Toy_20240807_163626/toy_MC_result.hdf5"
 # 120, 2e6
 #hdf5_path = "results/Toy_20240808_172237/toy_MC_result.hdf5"
 # LIFE 2m
 #hdf5_path = "../results/Toy_20240819_145106/toy_MC_result.hdf5"
+hdf5_path = "../results/Toy_20240826_172237/toy_MC_result.hdf5"
 
 x_titles = ['Radius [$R_{{\\rm earth}}$]',
             'Temperature [K]',
