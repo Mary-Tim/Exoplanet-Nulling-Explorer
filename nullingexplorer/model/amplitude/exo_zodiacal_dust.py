@@ -73,11 +73,12 @@ class ExoZodiacalDust(BaseAmplitude):
 class ExoZodiacalDustMatrix(ExoZodiacalDust):
     def __init__(self):
         super().__init__()
+        self.register_buffer('vol_number', torch.tensor(200, dtype=int))  
+        self.register_buffer('wl_number', torch.tensor(5, dtype=int))  
+
     def init_exo_zodi(self, data):
-        vol_number = 500
-        wl_number = 2
-        radius_interp = torch.linspace(self.r_in*Constants._au_to_meter, self.r_out*Constants._au_to_meter, vol_number)
-        psi_interp = torch.linspace(-torch.pi, torch.pi, vol_number)
+        radius_interp = torch.linspace(self.r_in*Constants._au_to_meter, self.r_out*Constants._au_to_meter, self.vol_number)
+        psi_interp = torch.linspace(-torch.pi, torch.pi, self.vol_number)
         d_radius = (radius_interp[1] - radius_interp[0]) 
         d_psi = torch.abs(psi_interp[1] - psi_interp[0])
 
@@ -86,8 +87,8 @@ class ExoZodiacalDustMatrix(ExoZodiacalDust):
         psi_mesh = psi_mesh.flatten()
 
         def exo_zodi(point):
-            wl_interp = torch.linspace(point['wl_lo'], point['wl_hi'], wl_number)
-            delta_wl = (point['wl_hi'] - point['wl_lo']) / wl_number
+            wl_interp = torch.linspace(point['wl_lo'], point['wl_hi'], self.wl_number)
+            delta_wl = (point['wl_hi'] - point['wl_lo']) / self.wl_number
             def infin_zodi(radius, psi):
                 theta = radius / self.distance
                 ra, dec = self.trans_map.to_cartesian(theta, psi)

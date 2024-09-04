@@ -119,7 +119,6 @@ class FitResult():
             dataset_list = file.keys()
             for ds in dataset_list:
                 result.set_item(ds, file[ds][:])
-            file.close()
 
         if 'param_name' in result.keys():
             param_name = [name.decode("utf-8") for name in result.get_item('param_name')]

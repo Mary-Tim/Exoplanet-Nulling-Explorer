@@ -113,7 +113,7 @@ def main():
 
     integral_time = 200000
     obs_num = 360
-    num_of_toy = 1000
+    num_of_toy = 200
     #mas_range = [50., 150.]
     mas = 100.
 

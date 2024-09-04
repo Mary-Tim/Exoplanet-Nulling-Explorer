@@ -1,5 +1,5 @@
 import sys
-sys.path.append('..')
+sys.path.append('../..')
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -7,6 +7,9 @@ import mplhep
 plt.style.use(mplhep.style.LHCb2)
 from tqdm import tqdm
 from scipy.interpolate import interpn
+
+from itertools import cycle
+cycol = cycle('bgrcmk')
 
 import torch
 torch.set_default_device('cuda:0')
@@ -19,8 +22,8 @@ obs_config = {
     'Spectrum':{
         'Type': 'Resolution',
         'R': 20,
-        'Low': 4.,
-        'High': 18.5,        # unit: micrometer
+        'Low': 5.,
+        'High': 17,        # unit: micrometer
     },
     'Observation':{
         'ObsNumber': 360,
@@ -44,7 +47,7 @@ obs_config = {
         'formation_longitude': 0.,  # Formation longitude [degree] 
         'formation_latitude' : 0.,  # Formation latitude [degree] 
         # Instrument parameters
-        'mirror_diameter': 4,   # Diameter of MiYin primary mirror [meter]
+        'mirror_diameter': 3.5,   # Diameter of MiYin primary mirror [meter]
         'quantum_eff': 0.7,     # Quantum efficiency of detector [dimensionless]
         'instrument_eff': 0.05, # Instrument throughput efficiency [dimensionless]
         'nulling_depth': 0.,    # Nulling depth of the instrument [dimensionless, within [0,1) ]
@@ -65,8 +68,8 @@ sig_amp_config = {
             },
         },
     },
-    'Instrument': 'MiYinBasicType',
-    'TransmissionMap': 'DualChoppedDestructive',
+    'Instrument': {'Model': 'MiYinBasicType'},
+    'TransmissionMap': {'Model': 'DualChoppedDestructive'},
     'Configuration':{
         'distance': 10,         # distance between Miyin and target [pc]
         'star_radius': 695500,  # Star radius [kilometer]
@@ -89,8 +92,8 @@ bkg_amp_config = {
             "Model": 'ExoZodiacalDustMatrix',
         },
     },
-    'Instrument': 'MiYinBasicType',
-    'TransmissionMap': 'DualChoppedDestructive',
+    'Instrument': {'Model': 'MiYinBasicType'},
+    'TransmissionMap': {'Model': 'DualChoppedDestructive'},
     'Configuration':{
         'distance': 10,         # distance between Miyin and target [pc]
         'star_radius': 695500,  # Star radius [kilometer]
@@ -101,64 +104,45 @@ bkg_amp_config = {
     }
 }
 
-temperature_range = np.array([100, 800])
-radius_range = np.array([6371*0.48, 6371*1.1])
-scan_num = 100
-
-temperature_line = np.linspace(temperature_range[0], temperature_range[1], scan_num)
-radius_line = np.linspace(radius_range[0], radius_range[1], scan_num)
-
-TEMP, RADI = np.meshgrid(temperature_line, radius_line)
-
-temperature_array = TEMP.flatten()
-radius_array = RADI.flatten()
+angular_separation = np.linspace(1., 200., 1000)
 
 sig_poisson = PoissonSignificance()
 sig_poisson.obs_config = obs_config
-sig_poisson.bkg_amp_config = bkg_amp_config
 
-bkg_pe = sig_poisson.gen_bkg_pe()
+#sig_poisson.bkg_amp_config = bkg_amp_config
+#bkg_pe = sig_poisson.gen_bkg_pe()
 
-def sig_point(temp, radius):
-    sig_amp_config['Amplitude']['earth']['Parameters']['temperature']['mean'] = temp
-    sig_amp_config['Amplitude']['earth']['Parameters']['radius']['mean'] = radius*1e3
-    sig_poisson.sig_amp_config = sig_amp_config
-    sig_pe = sig_poisson.gen_sig_pe()
-    return sig_poisson.get_significance(sig_pe, bkg_pe)
-
-significance = np.zeros(len(temperature_array))
-
-for i, temp, radius in tqdm(zip(range(len(temperature_array)), temperature_array, radius_array), total=len(temperature_array)):
-    significance[i] = sig_point(temp, radius)
+theta = 30. / 180. * np.pi
+distance = np.array([2., 5., 10., 20., 30.], dtype=np.float32)
+#distance = np.array([2., 3., 20., 30.], dtype=np.float32)
+#theta_array = np.array([0., 30., 45., 60., 90.], dtype=np.float32) / 180. * np.pi
 
 fig, ax = plt.subplots()
-levels = np.geomspace(0.001, 1.01*np.max(significance), 1000)
-trans_map_cont = ax.contourf(TEMP, RADI, significance.reshape(scan_num, scan_num), levels=levels, cmap = plt.get_cmap("bwr"), norm='log')
+for dt in tqdm(distance):
+    sig_amp_config['Configuration']['distance'] = dt
+    bkg_amp_config['Configuration']['distance'] = dt
+    bkg_pe = sig_poisson.gen_bkg_pe(bkg_amp_config)
+    significance = np.zeros(len(angular_separation))
+    for i, angular in enumerate(angular_separation):
+        #angular_this = angular * 10. / dt
+        sig_amp_config['Amplitude']['earth']['Parameters']['ra']['mean'] = angular * np.cos(theta)
+        sig_amp_config['Amplitude']['earth']['Parameters']['dec']['mean'] = angular * np.sin(theta)
+        #sig_amp_config['Amplitude']['earth']['Parameters']['ra']['mean'] = angular_this * np.cos(theta)
+        #sig_amp_config['Amplitude']['earth']['Parameters']['dec']['mean'] = angular_this * np.sin(theta)
+        sig_pe = sig_poisson.gen_sig_pe(sig_amp_config)
+        significance[i] = sig_poisson.get_significance(sig_pe, bkg_pe)
 
-ax.set_xlabel("Temperature / Kelvin")
-ax.set_ylabel("Radius / 1e3 km")
+    color = next(cycol)
+    #trans_map_cont = ax.plot(angular_separation * 10. / dt, significance, color=color, label=f"{dt:.0f}pc")
+    trans_map_cont = ax.plot(angular_separation, significance, color=color, label=f"{dt:.0f}pc")
 
-cbar = fig.colorbar(trans_map_cont, format="%.2f")
+ax.set_xlabel("Angular / mas")
+ax.set_ylabel("Significance")
+#ax.set_xlim([10., 200.])
+#ax.set_ylim(bottom=0.5)
+#ax.set_yscale('log')
 
-# Mark planets
-planets = {
-    'Earth': [285., 6371., 'P'],
-    'Mars':  [210., 3389., 'o'],
-    'Venus': [737., 6051., 'v'],
-}
-
-signi = []
-for val in planets.values():
-    signi.append(sig_point(val[0], val[1]))
-    #signi.append(interpn(points=(temperature_line, radius_line), values=significance.reshape(scan_num, scan_num), xi=np.array([val[0], val[1]])))
-
-print(signi)
-
-for i, name, val in zip(range(len(planets)), planets.keys(), planets.values()):
-    ax.scatter(val[0], val[1], s=200, marker=val[2], color='black', label=name)
-    plt.annotate(text=f"{signi[i]:.2f}$\,\sigma$", xy=(val[0], val[1]), xytext=(val[0]-40, val[1]-250), fontsize=25, color='black')
-
-ax.legend(fontsize=30, loc='lower right')
+ax.legend()
 
 plt.show()
 

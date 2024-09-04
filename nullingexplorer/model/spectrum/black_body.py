@@ -100,6 +100,49 @@ class TorchQuadBlackBody(BaseSpectrum):
         return torch.stack([self._integrate_jit_compiled_parts(lambda w: self.unbinned_black_body(temperature, w), domain) for domain in quad_domains])
 
 class InterpBlackBody(BaseSpectrum):
+    '''
+    TODO: Bug report:
+        Traceback (most recent call last):
+          File "/home/mart/WorkSpace/Nulling/NullingExplorer/test/significance/scan_signi_wavelength.py", line 132, in <module>
+            significance[i] = sig_point(wl_lo, wl_hi)
+          File "/home/mart/WorkSpace/Nulling/NullingExplorer/test/significance/scan_signi_wavelength.py", line 125, in sig_point
+            sig_pe = sig_poisson.gen_sig_pe()
+          File "/home/mart/WorkSpace/Nulling/NullingExplorer/test/significance/../../nullingexplorer/significance/poisson_significance.py", line 61, in gen_sig_pe
+            sig_data['photon_electron'] = sig_amp(sig_data)
+          File "/home/mart/miniconda3/envs/NullExoExp/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1532, in _wrapped_call_impl
+            return self._call_impl(*args, **kwargs)
+          File "/home/mart/miniconda3/envs/NullExoExp/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1541, in _call_impl
+            return forward_call(*args, **kwargs)
+          File "/home/mart/WorkSpace/Nulling/NullingExplorer/test/significance/../../nullingexplorer/generator/amplitude_creator.py", line 70, in forward
+            return torch.sum(torch.stack([getattr(self, name)(data) for name in self.config['Amplitude']]), 0) * self.instrument(data)
+          File "/home/mart/WorkSpace/Nulling/NullingExplorer/test/significance/../../nullingexplorer/generator/amplitude_creator.py", line 70, in <listcomp>
+            return torch.sum(torch.stack([getattr(self, name)(data) for name in self.config['Amplitude']]), 0) * self.instrument(data)
+          File "/home/mart/miniconda3/envs/NullExoExp/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1532, in _wrapped_call_impl
+            return self._call_impl(*args, **kwargs)
+          File "/home/mart/miniconda3/envs/NullExoExp/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1541, in _call_impl
+            return forward_call(*args, **kwargs)
+          File "/home/mart/WorkSpace/Nulling/NullingExplorer/test/significance/../../nullingexplorer/model/amplitude/planet_spectrum.py", line 37, in forward
+            return torch.pi * (self.radius / (self.distance))**2 * self.spectrum(self.temperature, data) * \
+          File "/home/mart/miniconda3/envs/NullExoExp/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1532, in _wrapped_call_impl
+            return self._call_impl(*args, **kwargs)
+          File "/home/mart/miniconda3/envs/NullExoExp/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1541, in _call_impl
+            return forward_call(*args, **kwargs)
+          File "/home/mart/WorkSpace/Nulling/NullingExplorer/test/significance/../../nullingexplorer/model/spectrum/black_body.py", line 132, in forward
+            return torch.vmap(interp_black_body)(data, self.wl_interp)
+          File "/home/mart/miniconda3/envs/NullExoExp/lib/python3.10/site-packages/torch/_functorch/apis.py", line 188, in wrapped
+            return vmap_impl(func, in_dims, out_dims, randomness, chunk_size, *args, **kwargs)
+          File "/home/mart/miniconda3/envs/NullExoExp/lib/python3.10/site-packages/torch/_functorch/vmap.py", line 281, in vmap_impl
+            return _flat_vmap(
+          File "/home/mart/miniconda3/envs/NullExoExp/lib/python3.10/site-packages/torch/_functorch/vmap.py", line 47, in fn
+            return f(*args, **kwargs)
+          File "/home/mart/miniconda3/envs/NullExoExp/lib/python3.10/site-packages/torch/_functorch/vmap.py", line 403, in _flat_vmap
+            batched_outputs = func(*batched_inputs, **kwargs)
+          File "/home/mart/WorkSpace/Nulling/NullingExplorer/test/significance/../../nullingexplorer/model/spectrum/black_body.py", line 130, in <lambda>
+            interp_black_body = lambda point, wl: torch.sum(self.unbinned_black_body(temperature, wl)) / self.interp_num * (point['wl_hi'] - point['wl_lo'])
+          File "/home/mart/miniconda3/envs/NullExoExp/lib/python3.10/site-packages/torch/utils/_device.py", line 78, in __torch_function__
+            return func(*args, **kwargs)
+        IndexError: select(): index 0 out of range for tensor of size [0] at dimension 0
+    '''
     def __init__(self):
         super().__init__()
         # module

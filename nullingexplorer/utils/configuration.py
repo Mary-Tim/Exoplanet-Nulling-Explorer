@@ -31,7 +31,7 @@ class Configuration():
 
     @classmethod
     def set_property(cls, key: str, val):
-        if isinstance(val, (float, list, np.ndarray)):
+        if isinstance(val, (float, list, np.ndarray, np.floating)):
             cls._data_property[key] = torch.tensor(val)
         elif isinstance(val, torch.Tensor):
             cls._data_property[key] = val

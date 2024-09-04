@@ -21,9 +21,9 @@ cycol = cycle('bgrcmk')
 obs_config = {
     'Spectrum':{
         'Type': 'Resolution',
-        'R': 30,
-        'Low': 7.,
-        'High': 28,        # unit: micrometer
+        'R': 20,
+        'Low': 5.,
+        'High': 17.,        # unit: micrometer
     },
     'Observation':{
         'ObsNumber': 360,

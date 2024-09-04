@@ -22,8 +22,8 @@ nbins = 20
 # 10m baseline
 #hdf5_path = "results/PoissonObs_20240821_113732/toy_nll_distribution.hdf5"
 # LIFE config
-#hdf5_path = "results/PoissonObs_20240826_113003/toy_nll_distribution.hdf5"
-hdf5_path = "results/PoissonObs_20240826_165153/toy_nll_distribution.hdf5"
+hdf5_path = "results/PoissonObs_20240826_113003/toy_nll_distribution.hdf5"
+#hdf5_path = "results/PoissonObs_20240826_165153/toy_nll_distribution.hdf5"
 
 result = {}
 file = h5py.File(hdf5_path, "r")

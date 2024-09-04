@@ -22,6 +22,11 @@ class AmplitudeCreator(nn.Module):
                 with open(config, mode='r', encoding='utf-8') as yaml_file:
                     self.config = yaml.load(yaml_file.read(), Loader=yaml.FullLoader)
 
+        # Set global config
+        if config.get('Configuration'):
+            for key, val in config['Configuration'].items():
+                cfg.set_property(key, val)
+
         # Config transmission map
         trans_config = 'DualChoppedDestructive'
         if config.get('TransmissionMap'):
@@ -48,10 +53,6 @@ class AmplitudeCreator(nn.Module):
                     self.buffer_setting(self.instrument, config=inst_config['Buffers'])
             else:
                 self.instrument = get_instrument(inst_config)()
-
-        if config.get('Configuration'):
-            for key, val in config['Configuration'].items():
-                cfg.set_property(key, val)
 
         # Regist electronics background
         if config.get("Electronics"):
