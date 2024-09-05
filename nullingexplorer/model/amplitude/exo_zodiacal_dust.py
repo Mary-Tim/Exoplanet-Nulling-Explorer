@@ -105,3 +105,41 @@ class ExoZodiacalDustMatrix(ExoZodiacalDust):
             list_exo_zodi[i:i+chunk_size] = torch.vmap(exo_zodi)(data[i:i+chunk_size])
 
         self.exo_zodi.data = list_exo_zodi / self.distance**2
+
+class ExoZodiacalDustConstant(ExoZodiacalDust):
+    def __init__(self):
+        super().__init__()
+        self.register_buffer('vol_number', torch.tensor(200, dtype=int))  
+        self.register_buffer('wl_number', torch.tensor(5, dtype=int))  
+
+    def init_exo_zodi(self, data):
+        radius_interp = torch.linspace(self.r_in*Constants._au_to_meter, self.r_out*Constants._au_to_meter, self.vol_number)
+        psi_interp = torch.linspace(-torch.pi, torch.pi, self.vol_number)
+        d_radius = (radius_interp[1] - radius_interp[0]) 
+        d_psi = torch.abs(psi_interp[1] - psi_interp[0])
+
+        r_mesh, psi_mesh = torch.meshgrid(radius_interp, psi_interp, indexing='ij')
+        r_mesh = r_mesh.flatten()
+        psi_mesh = psi_mesh.flatten()
+
+        def exo_zodi(point):
+            wl_interp = torch.linspace(point['wl_lo'], point['wl_hi'], self.wl_number)
+            delta_wl = (point['wl_hi'] - point['wl_lo']) / self.wl_number
+            def infin_zodi(radius, psi):
+                theta = radius / self.distance
+                ra, dec = self.trans_map.to_cartesian(theta, psi)
+                interp_volume = d_psi / 2. * d_radius * (d_radius + 2*radius) * delta_wl
+                return torch.sum(self.spectrum(self.temperature(radius/Constants._au_to_meter), wl_interp) * self.sigma_m(radius/Constants._au_to_meter) * self.trans_map(ra, dec, wl_interp, point) * self.instrument.field_of_view(ra, dec, wl_interp) * interp_volume)
+
+            return torch.sum(torch.vmap(infin_zodi)(r_mesh, psi_mesh))
+
+        chunk_size = 10
+        data_0 = data[data['phase']==data['phase'][0]]
+        list_exo_zodi = torch.zeros(len(data_0))
+        for i in range(0, len(data_0), chunk_size):
+            if i+chunk_size > len(data_0):
+                list_exo_zodi[i:] = torch.vmap(exo_zodi)(data_0[i:])
+            list_exo_zodi[i:i+chunk_size] = torch.vmap(exo_zodi)(data_0[i:i+chunk_size])
+
+        phase_num = len(torch.unique(data['phase']))
+        self.exo_zodi.data = list_exo_zodi.repeat(phase_num) / self.distance**2

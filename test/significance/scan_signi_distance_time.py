@@ -12,7 +12,8 @@ from itertools import cycle
 cycol = cycle('bgrcmk')
 
 import torch
-torch.set_default_device('cuda:0')
+torch.set_default_device('cpu')
+#torch.set_default_device('cuda:0')
 torch.set_default_dtype(torch.float64)
 
 from nullingexplorer.significance import PoissonSignificance
@@ -36,6 +37,9 @@ obs_config = {
         'Baseline':{
             'Type': 'Constant',
             'Value': 30.,  # unit: meter
+            #'Type': 'Linear',
+            #'Low': 10.,  # unit: meter
+            #'High': 50.,  # unit: meter
         },
     },
     'Configuration':{
@@ -102,28 +106,28 @@ bkg_amp_config = {
 }
 
 obs_number = 360.
-max_time = 200.*3600/obs_number
-time_array = np.linspace(0., max_time, 1000)
+max_time = 200.
+time_array = np.linspace(0., max_time*3600/obs_number, 1000)
 
 sig_poisson = PoissonSignificance()
+sig_poisson.obs_config = obs_config
 
 #sig_poisson.bkg_amp_config = bkg_amp_config
 #bkg_pe = sig_poisson.gen_bkg_pe()
 
-theta = 0. / 180. * np.pi
-mirror_diameter = np.array([1., 2., 3., 4.], dtype=np.float32)
+theta = 30. / 180. * np.pi
+distance = np.array([3., 5., 10., 20., 30.], dtype=np.float32)
 #distance = np.array([2., 3., 20., 30.], dtype=np.float32)
 #theta_array = np.array([0., 30., 45., 60., 90.], dtype=np.float32) / 180. * np.pi
 
-obs_config['Observation']['Baseline']['Value'] = 30.
-sig_amp_config['Amplitude']['earth']['Parameters']['ra']['mean'] = 100. * np.cos(theta)
-sig_amp_config['Amplitude']['earth']['Parameters']['dec']['mean'] = 100. * np.sin(theta)
-
-time_at_ten_sigma = np.zeros(len(mirror_diameter))
+time_at_ten_sigma = np.zeros(len(distance))
 fig, ax = plt.subplots()
-for imd, md in tqdm(enumerate(mirror_diameter), total=len(mirror_diameter)):
-    obs_config['Configuration']['mirror_diameter'] = md
-    sig_poisson.obs_config = obs_config
+for idt, dt in tqdm(enumerate(distance), total=len(distance)):
+    sig_amp_config['Configuration']['distance'] = dt
+    bkg_amp_config['Configuration']['distance'] = dt
+    angular_this = 100. * 10. / dt
+    sig_amp_config['Amplitude']['earth']['Parameters']['ra']['mean'] = angular_this * np.cos(theta)
+    sig_amp_config['Amplitude']['earth']['Parameters']['dec']['mean'] = angular_this * np.sin(theta)
     bkg_pe = sig_poisson.gen_bkg_pe(bkg_amp_config)
     sig_pe = sig_poisson.gen_sig_pe(sig_amp_config)
     significance = np.zeros(len(time_array))
@@ -131,8 +135,8 @@ for imd, md in tqdm(enumerate(mirror_diameter), total=len(mirror_diameter)):
         significance[i] = sig_poisson.get_significance(sig_pe*time, bkg_pe*time)
 
     color = next(cycol)
-    #trans_map_cont = ax.plot(time_array * 10. / dt, significance, color=color, label=f"{dt:.0f}pc")
-    trans_map_cont = ax.plot(time_array*obs_number/3600., significance, color=color, label=f"{md:.0f}m")
+    #trans_map_cont = ax.plot(angular_separation * 10. / dt, significance, color=color, label=f"{dt:.0f}pc")
+    trans_map_cont = ax.plot(time_array*obs_number/3600., significance, color=color, label=f"{dt:.0f}pc")
 
     def aimed_time(signi):
         return np.power(signi/sig_poisson.get_significance(sig_pe,bkg_pe).cpu().detach().numpy(), 2)
@@ -140,17 +144,18 @@ for imd, md in tqdm(enumerate(mirror_diameter), total=len(mirror_diameter)):
     time_flag = aimed_time(7)*obs_number/3600
     ax.plot([time_flag, time_flag], [0, 7], linestyle='--', color=color)
 
-    time_at_ten_sigma[imd] = time_flag
+    time_at_ten_sigma[idt] = time_flag
 
-ax.plot([0, time_at_ten_sigma[0]], [7, 7], linestyle='--', color='black')
+ax.plot([0, time_at_ten_sigma[-1]], [7, 7], linestyle='--', color='black')
 ax.set_xlabel("Time [hour]")
 ax.set_ylabel("Significance")
-ax.set_xlim([0., 200.])
+ax.set_xlim([0., max_time])
 ax.set_ylim([0., 15])
-#ax.set_xscale('log')
+#ax.set_xlim([10., 200.])
+#ax.set_ylim(bottom=0.5)
+#ax.set_yscale('log')
 
 ax.legend()
-#ax.legend(loc='upper right')
 
 plt.show()
 

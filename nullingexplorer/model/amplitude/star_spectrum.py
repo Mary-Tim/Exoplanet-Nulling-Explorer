@@ -91,3 +91,45 @@ class StarBlackBodyMatrix(StarBlackBody):
             list_star_light[i:i+chunk_size] = torch.vmap(star_light)(data[i:i+chunk_size])
 
         self.star_light.data = list_star_light / self.distance**2
+
+class StarBlackBodyConstant(StarBlackBody):
+
+    def __init__(self):
+        super().__init__()
+        self.register_buffer('vol_number', torch.tensor(200, dtype=int))  
+        self.register_buffer('wl_number', torch.tensor(5, dtype=int))  
+
+    def init_star_light(self, data) -> torch.Tensor:
+
+        radius_interp = torch.linspace(0., self.radius, self.vol_number)
+        psi_interp = torch.linspace(-torch.pi, torch.pi, self.vol_number)
+        d_radius = (radius_interp[1] - radius_interp[0]) 
+        d_psi = torch.abs(psi_interp[1] - psi_interp[0])
+
+        r_mesh, psi_mesh = torch.meshgrid(radius_interp, psi_interp, indexing='ij')
+        r_mesh = r_mesh.flatten()
+        psi_mesh = psi_mesh.flatten()
+
+        def star_light(point):
+            wl_interp = torch.linspace(point['wl_lo'], point['wl_hi'], self.wl_number)
+            delta_wl = (point['wl_hi'] - point['wl_lo']) / self.wl_number
+            def infin_star(radius, psi):
+                theta = radius / self.distance
+                ra, dec = self.trans_map.to_cartesian(theta, psi)
+                interp_volume = d_psi / 2. * d_radius * (d_radius + 2*radius) * delta_wl
+                return torch.sum(self.spectrum(self.temperature, wl_interp) * self.trans_map(ra, dec, wl_interp, point) * interp_volume)
+
+            return torch.sum(torch.vmap(infin_star)(r_mesh, psi_mesh))
+
+        #list_star_light = torch.vmap(star_light, chunk_size=10)(data)
+        chunk_size = 10
+        data_0 = data[data['phase']==data['phase'][0]]
+        list_star_light = torch.zeros(len(data_0))
+        for i in range(0, len(data_0), chunk_size):
+            if i+chunk_size > len(data_0):
+                list_star_light[i:] = torch.vmap(star_light)(data_0[i:])
+            list_star_light[i:i+chunk_size] = torch.vmap(star_light)(data_0[i:i+chunk_size])
+
+        phase_num = len(torch.unique(data['phase']))
+
+        self.star_light.data = list_star_light.repeat(phase_num) / self.distance**2

@@ -8,6 +8,7 @@ import mplhep
 plt.style.use(mplhep.style.LHCb2)
 from tqdm import tqdm
 from datetime import datetime
+from scipy.optimize import basinhopping
 import pandas as pd
 import copy, os
 import h5py
@@ -72,7 +73,7 @@ class PpopLoader():
     def i_star(self, i_star):
         self.__i_star = i_star
 
-class PoissonObservation():
+class ObservationPlanner():
     '''
     P-pop parameters needed by this class:
         'Rp',       # Planet radius                         [R_earth]
@@ -111,7 +112,7 @@ class PoissonObservation():
             },
             'Observation':{
                 'ObsNumber': 360,
-                'IntegrationTime': 100,  # unit: second
+                'IntegrationTime': 1,  # unit: second
                 'ObsMode': [1],  # [1] or [-1] or [1, -1]
                 'Phase':{
                     'Start' : 0.,
@@ -128,7 +129,7 @@ class PoissonObservation():
                 'formation_longitude': 0.,  # Formation longitude [degree] 
                 'formation_latitude' : 0.,  # Formation latitude [degree] 
                 # Instrument parameters
-                'mirror_diameter': 4,   # Diameter of MiYin primary mirror [meter]
+                'mirror_diameter': 3.5,   # Diameter of MiYin primary mirror [meter]
                 'quantum_eff': 0.7,     # Quantum efficiency of detector [dimensionless]
                 'instrument_eff': 0.05, # Instrument throughput efficiency [dimensionless]
                 'nulling_depth': 0.,    # Nulling depth of the instrument [dimensionless, within [0,1) ]
@@ -142,8 +143,8 @@ class PoissonObservation():
             {
                 'radius':         {'mean': 6371.e3},
                 'temperature':    {'mean': 285.},
-                'ra':            {'mean': 62.5},
-                'dec':            {'mean': 78.1},
+                'ra':            {'mean': 100.},
+                'dec':            {'mean': 0.},
             },
         }
         self.__sig_template = {
@@ -159,17 +160,34 @@ class PoissonObservation():
         self.__bkg_template = {
             'Amplitude':{
                 'star':{
-                    'Model': 'StarBlackBodyMatrix',
+                    'Model': 'StarBlackBodyConstant',
+                    'Buffers': {
+                        'vol_number': 50,
+                        'wl_number': 2   
+                    }
                 },
                 'local_zodi':{
-                    'Model': 'LocalZodiacalDustMatrix',
+                    'Model': 'LocalZodiacalDustConstant',
+                    'Buffers': {
+                        'vol_number': 50,
+                    }
                 },
                 'exo_zodi':{
-                    "Model": 'ExoZodiacalDustMatrix',
+                    "Model": 'ExoZodiacalDustConstant',
+                    'Buffers': {
+                        'vol_number': 50,
+                        'wl_number': 2   
+                    }
                 },
             },
             'Instrument': 'MiYinBasicType',
             'TransmissionMap': 'DualChoppedDestructive',
+            #'Electronics': {
+            #    'Model': 'UniformElectronics',
+            #    'Buffers': {
+            #        'noise_rate': 10.0,
+            #    },
+            #},
             'Configuration':{
                 'distance': 10,         # distance between Miyin and target [pc]
                 'star_radius': 695500,  # Star radius [kilometer]
@@ -179,35 +197,57 @@ class PoissonObservation():
                 'zodi_level': 3,        # scale parameter for exo-zodi [dimensionless]
             }
         }
-    
-    def generate_planet_position(self, max_ang, orbit_vector):
-        cms_theta = np.random.uniform(0., 2*np.pi)
-        z_unit = np.array([0., 0., 1.])
-        cos_rotate = np.clip(np.dot(orbit_vector, z_unit)/(np.linalg.norm(orbit_vector)*np.linalg.norm(z_unit)), -1., 1.)
 
-        ra = max_ang * cos_rotate * np.cos(cms_theta)
-        dec = max_ang * cos_rotate * np.sin(cms_theta)
-        return ra, dec
+    def get_baseline(self, distance, angular):
+        '''
+        a and b obtained from interpolation
+        k = a * distance + b
+        baseline = k * angular
+        '''
+        a = -14.26165496
+        b = 1810.93850806
+        k = a * distance + b
+        baseline = k / angular
+        #if baseline < 30.:
+        #    baseline = 30.
 
-    def generate_orbit_vector(self):
-        theta = np.arccos(np.random.uniform(-1.,1.))
-        phi = np.random.uniform(0., 2*np.pi)
-        return np.array([np.sin(theta)*np.cos(phi), np.sin(theta)*np.sin(phi), np.cos(theta)], dtype=np.float64)
+        return baseline
 
-    def generate_planet_amp(self, stellar_info: pd.DataFrame, orbit_vector: np.ndarray):
-        planet_dict = {}
-        for index, row in stellar_info.iterrows():
-            planet_config = copy.deepcopy(self.__planet_template)
-            planet_config['Parameters']['radius']['mean'] = row['Rp'] * cons._earth_radius
-            planet_config['Parameters']['temperature']['mean'] = row['Tp']
-            ra, dec = self.generate_planet_position(max_ang=row['AngSep']*1000, orbit_vector=orbit_vector)
-            planet_config['Parameters']['ra']['mean']= ra
-            planet_config['Parameters']['dec']['mean']= dec
-            print(f"AngSep: {row['AngSep']},\tra: {ra},\tdec: {dec}")
+    def habitable_zone(self, radius, temperature, distance):
+        sun_radius = 695500
+        sun_temperature = 5780
+        habitable_parameters = np.array(
+            [
+                [1.7763,    1.4335e-4,  3.3954e-9,  -7.6364e-12,    -1.1950e-15],
+                [0.3207,    5.4471e-5,  1.5275e-9,  -2.1709e-12,    -3.8282e-16]
+            ],
+            dtype=np.float32
+        )
 
-            planet_dict[f'planet{index}'] = planet_config
+        relative_radius = radius / sun_radius
+        relative_temperature = temperature / sun_temperature
+        relative_lumi = relative_radius ** 2 * relative_temperature ** 4
 
-        return planet_dict
+        hz_temperature = temperature - sun_temperature
+
+        s_eff_in = habitable_parameters[0, 0] + \
+            habitable_parameters[0, 1] * hz_temperature + \
+            habitable_parameters[0, 2] * hz_temperature ** 2 + \
+            habitable_parameters[0, 3] * hz_temperature ** 3 + \
+            habitable_parameters[0, 4] * hz_temperature ** 4
+
+        s_eff_out = habitable_parameters[1, 0] + \
+            habitable_parameters[1, 1] * hz_temperature + \
+            habitable_parameters[1, 2] * hz_temperature ** 2 + \
+            habitable_parameters[1, 3] * hz_temperature ** 3 + \
+            habitable_parameters[1, 4] * hz_temperature ** 4
+
+        #hz_in = np.sqrt(relative_lumi/s_eff_in) 
+        #hz_out = np.sqrt(relative_lumi/s_eff_out) 
+        hz_in = np.sqrt(relative_lumi/s_eff_in) * cons._au_to_meter / (distance * cons._pc_to_meter) * cons._radian_to_mas
+        hz_out = np.sqrt(relative_lumi/s_eff_out) * cons._au_to_meter / (distance * cons._pc_to_meter) * cons._radian_to_mas
+
+        return hz_in, hz_out
 
     def generate_obs_plan(self, stellar_info: pd.DataFrame):
         #stellar_info = self.__ppop_loader.next_star()
@@ -221,13 +261,46 @@ class PoissonObservation():
         bkg_config['Configuration']['star_temperature'] = stellar_info['Ts'][0]
         bkg_config['Configuration']['target_longitude'] = stellar_info['RA'][0]
         bkg_config['Configuration']['target_latitude'] = stellar_info['Dec'][0]
-        bkg_config['Configuration']['zodi_level'] = stellar_info['z'][0]
+        bkg_config['Configuration']['zodi_level'] = 3.
+        #bkg_config['Configuration']['zodi_level'] = stellar_info['z'][0]
 
-        orbit_vector = self.generate_orbit_vector()
-        planet_dict = self.generate_planet_amp(stellar_info=stellar_info, orbit_vector=orbit_vector)
+        hz_in, _ = self.habitable_zone(stellar_info['Rs'][0] * cons._sun_radius, stellar_info['Ts'][0], stellar_info['Ds'][0])
+        planet_config = copy.deepcopy(self.__planet_template)
+        planet_config['Parameters']['ra']['mean'] = hz_in
+        #planet_config['Parameters']['ra']['mean'] = self.__planet_template['Parameters']['ra']['mean'] * (10. / stellar_info['Ds'][0])
+
+        obs_config['Observation']['Baseline']['Value'] = self.get_baseline(stellar_info['Ds'][0], planet_config['Parameters']['ra']['mean'])
+
         #bkg_config['Amplitude'].update(planet_dict)
+        sig_config = copy.deepcopy(self.__sig_template)
+        sig_config['Amplitude']['planet'] = planet_config
+        sig_config['Configuration']['distance'] = stellar_info['Ds'][0]
 
-        return obs_config, bkg_config, planet_dict
+        return obs_config, bkg_config, sig_config
+
+    def evaluate_stellar_system(self, stellar_info: pd.DataFrame):
+        obs_config, bkg_config, planet_config = self.generate_obs_plan(stellar_info)
+        self.__poisson_sigfi.obs_config = obs_config
+
+        #print(planet_config)
+        sig_pe = self.__poisson_sigfi.gen_sig_pe(sig_config=planet_config)
+        bkg_pe = self.__poisson_sigfi.gen_bkg_pe(bkg_config=bkg_config)
+
+        def significance(t):
+            return (self.__poisson_sigfi.get_significance(sig_pe=sig_pe*t, bkg_pe=bkg_pe*t)).cpu().detach().numpy()
+
+        def loss(param):
+            return np.fabs(7 - significance(param[0]))
+
+        result = basinhopping(loss, 
+                    x0=100., 
+                    minimizer_kwargs={'method': 'L-BFGS-B', 'bounds': [(0., 200000.)], 'jac': False, 
+                                        'options': {'maxcor': 1000, 'ftol': 1e-10, 'maxiter': 100000, 'maxls': 50}}, 
+                    stepsize=10,
+                    niter=10000,
+                    niter_success=50)
+
+        return obs_config['Observation']['Baseline']['Value'], result.x[0], significance(result.x[0]), planet_config['Amplitude']['planet']['Parameters']['ra']['mean']
 
     def evaluate_all(self, output_path = None):
         self.__ppop_loader.i_star = 0
@@ -236,10 +309,12 @@ class PoissonObservation():
             stellar_info = self.__ppop_loader.next_star()
             if stellar_info is None:
                 break
-            significance, true_ang_sep = self.evaluate_stellar_system(stellar_info)
-            stellar_info['sigma'] = significance
-            stellar_info['true_ang_sep'] = true_ang_sep
-            result_list.append(stellar_info)
+            bl, ot, sig, hz_in = self.evaluate_stellar_system(stellar_info)
+            stellar_info['Baseline'] = bl
+            stellar_info['ObsTime'] = ot
+            stellar_info['HZ_in'] = hz_in
+            print(f"Distrance:{stellar_info['Ds'][0]}, Baseline: {bl:.3f}, ObsTime: {ot:.3f}, Significance: {sig:.3f}: HZ-in: {hz_in:.3f}")
+            result_list.append(stellar_info[0:1])
             #result_list.append(np.column_stack((stellar_info.to_numpy(), significance, true_ang_sep)))
 
         #result_numpy = np.vstack(result_list)
@@ -247,12 +322,12 @@ class PoissonObservation():
 
         start_time = datetime.now()
         if output_path is None:
-            output_path = f"results/PoissonObs_{start_time.strftime('%Y%m%d_%H%M%S')}"
+            output_path = f"results/ObsTime_{start_time.strftime('%Y%m%d_%H%M%S')}"
         if not os.path.exists(output_path):
             os.mkdir(output_path)
 
-        self.__param_list.append("sigma")
-        self.__param_list.append("true_ang_sep")
+        self.__param_list.append("Baseline")
+        self.__param_list.append("ObsTime")
 
         print(f"Save the result to: {output_path}")
         with h5py.File(f"{output_path}/toy_nll_distribution.hdf5", 'w') as file:
@@ -260,42 +335,6 @@ class PoissonObservation():
                 file.create_dataset(key, data=result[key].to_numpy())
             #for i, key in enumerate(self.__param_list):
             #    file.create_dataset(key, data=result_numpy[:,i])
-
-    def evaluate_stellar_system(self, stellar_info: pd.DataFrame):
-        obs_config, bkg_config, planet_dict = self.generate_obs_plan(stellar_info)
-        self.__poisson_sigfi.obs_config = obs_config
-
-        significance = np.zeros(len(stellar_info), dtype=np.float64)
-        true_ang_sep = np.zeros(len(stellar_info), dtype=np.float64)
-
-        continuum_nbkg = self.__poisson_sigfi.gen_bkg_pe(bkg_config=bkg_config)
-
-        for i, key in enumerate(planet_dict.keys()):
-            # Generate background
-            if len(planet_dict) > 1:
-                planet_bkg = copy.deepcopy(planet_dict)
-                planet_bkg_config = copy.deepcopy(self.__sig_template)
-                del planet_bkg[key]
-                planet_bkg_config['Amplitude'].update(planet_bkg)
-                nbkg = continuum_nbkg + self.__poisson_sigfi.gen_bkg_pe(bkg_config=planet_bkg_config)
-            else:
-                nbkg = continuum_nbkg
-
-            # Generate signal
-            sig_config = copy.deepcopy(self.__sig_template)
-            sig_config['Configuration']['distance'] = stellar_info['Ds'][0]
-            sig_config['Amplitude'] = {key: planet_dict[key]}
-            nsig = self.__poisson_sigfi.gen_sig_pe(sig_config=sig_config)
-
-            # Evaluate significance
-            significance[i] = self.__poisson_sigfi.get_significance(sig_pe=nsig, bkg_pe=nbkg)
-
-            # Calculate true angular separation
-            ra = planet_dict[key]['Parameters']['ra']['mean'] / 1000.
-            dec = planet_dict[key]['Parameters']['dec']['mean'] / 1000.
-            true_ang_sep[i] = np.sqrt(ra**2 + dec**2)
-        
-        return significance, true_ang_sep
 
 def main():
     # Set device during generation
@@ -305,7 +344,7 @@ def main():
 
     loader = PpopLoader('MeaYinPlanetPopulation_Full.txt')
 
-    observer = PoissonObservation(loader)
+    observer = ObservationPlanner(loader)
     observer.evaluate_all()
 
 

@@ -93,6 +93,8 @@ class AmplitudeCreator(nn.Module):
             self.parameters_setting(spectrum, config['Spectrum']['Parameters'])
         else:
             self.parameters_setting(spectrum)
+        if 'Buffers' in config['Spectrum'].keys():
+            self.buffer_setting(spectrum, config=config['Spectrum']['Buffers'])
 
         return spectrum
 

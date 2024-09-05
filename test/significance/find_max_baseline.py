@@ -7,6 +7,7 @@ import mplhep
 plt.style.use(mplhep.style.LHCb2)
 from tqdm import tqdm
 from scipy.interpolate import interpn
+from scipy.optimize import minimize, basinhopping
 
 from itertools import cycle
 cycol = cycle('bgrcmk')
@@ -16,6 +17,25 @@ torch.set_default_device('cuda:0')
 torch.set_default_dtype(torch.float64)
 
 from nullingexplorer.significance import PoissonSignificance
+
+distance = 20
+#1pc, 1801.89145706
+#2pc, 1784.71436851
+#3pc, 1791.00535393
+#4pc, 1776.30737853
+#5pc, 1761.28848498
+#6pc, 1723.56412456
+#7pc, 1715.25944858
+#7pc, 1715.25944858
+#8pc, 1694.29704737
+#9pc, 1679.83548953
+#10pc, 1668.62830787
+#12pc, 1631.49730415
+#14pc, 1596.73670862
+#16pc, 1562.52396168
+#18pc, 1540.45738978
+#20pc, 1506.59485116
+
 
 # Observation plan
 obs_config = {
@@ -43,7 +63,7 @@ obs_config = {
     },
     'Configuration':{
         # Formation parameters
-        'ratio':    6,          # ratio of imaging baseline versus nulling baseline [dimensionless]]
+        'ratio':    6.,          # ratio of imaging baseline versus nulling baseline [dimensionless]]
         'formation_longitude': 0.,  # Formation longitude [degree] 
         'formation_latitude' : 0.,  # Formation latitude [degree] 
         # Instrument parameters
@@ -71,7 +91,7 @@ sig_amp_config = {
     'Instrument': {'Model': 'MiYinBasicType'},
     'TransmissionMap': {'Model': 'DualChoppedDestructive'},
     'Configuration':{
-        'distance': 10,         # distance between Miyin and target [pc]
+        'distance': distance,         # distance between Miyin and target [pc]
         'star_radius': 695500,  # Star radius [kilometer]
         'star_temperature': 5772,   # Star temperature [Kelvin]
         'target_longitude': 0.,     # Ecliptic longitude [degree]
@@ -83,19 +103,19 @@ sig_amp_config = {
 bkg_amp_config = {
     'Amplitude':{
         'star':{
-            'Model': 'StarBlackBodyMatrix',
+            'Model': 'StarBlackBodyConstant',
         },
         'local_zodi':{
-            'Model': 'LocalZodiacalDustMatrix',
+            'Model': 'LocalZodiacalDustConstant',
         },
         'exo_zodi':{
-            "Model": 'ExoZodiacalDustMatrix',
+            "Model": 'ExoZodiacalDustConstant',
         },
     },
     'Instrument': {'Model': 'MiYinBasicType'},
     'TransmissionMap': {'Model': 'DualChoppedDestructive'},
     'Configuration':{
-        'distance': 10,         # distance between Miyin and target [pc]
+        'distance': distance,         # distance between Miyin and target [pc]
         'star_radius': 695500,  # Star radius [kilometer]
         'star_temperature': 5772,   # Star temperature [Kelvin]
         'target_longitude': 0.,     # Ecliptic longitude [degree]
@@ -104,47 +124,91 @@ bkg_amp_config = {
     }
 }
 
-angular_separation = np.linspace(1., 200., 1000)
+angular_separation = np.linspace(1., 100., 200)
 
 sig_poisson = PoissonSignificance()
-sig_poisson.obs_config = obs_config
+#sig_poisson.obs_config = obs_config
 
-#sig_poisson.bkg_amp_config = bkg_amp_config
+sig_poisson.bkg_amp_config = bkg_amp_config
 #bkg_pe = sig_poisson.gen_bkg_pe()
 
+significance = np.zeros(len(angular_separation))
 theta = 30. / 180. * np.pi
-distance = np.array([3., 5., 10., 20., 30.], dtype=np.float32)
-#distance = np.array([2., 3., 20., 30.], dtype=np.float32)
+baseline = np.array([30., 40., 50., 75., 100.], dtype=np.float32)
 #theta_array = np.array([0., 30., 45., 60., 90.], dtype=np.float32) / 180. * np.pi
+max_significance = np.zeros(len(baseline))
+max_angular = np.zeros(len(baseline))
 
 fig, ax = plt.subplots()
-for dt in tqdm(distance):
-    sig_amp_config['Configuration']['distance'] = dt
-    bkg_amp_config['Configuration']['distance'] = dt
-    bkg_pe = sig_poisson.gen_bkg_pe(bkg_amp_config)
-    significance = np.zeros(len(angular_separation))
-    for i, angular in enumerate(angular_separation):
-        #angular_this = angular * 10. / dt
+for ib, bl in tqdm(enumerate(baseline), total=len(baseline)):
+    obs_config['Observation']['Baseline']['Value'] = bl
+    sig_poisson.obs_config = obs_config
+    bkg_pe = sig_poisson.gen_bkg_pe()
+
+    init_angular = 0.8 * (1e-5 / bl) * (180. / np.pi) * 3600. *1e3
+    boundary = [(0.8 * init_angular, 1.2*init_angular)]
+
+    def eval_significance(angular):
         sig_amp_config['Amplitude']['earth']['Parameters']['ra']['mean'] = angular * np.cos(theta)
         sig_amp_config['Amplitude']['earth']['Parameters']['dec']['mean'] = angular * np.sin(theta)
-        #sig_amp_config['Amplitude']['earth']['Parameters']['ra']['mean'] = angular_this * np.cos(theta)
-        #sig_amp_config['Amplitude']['earth']['Parameters']['dec']['mean'] = angular_this * np.sin(theta)
         sig_pe = sig_poisson.gen_sig_pe(sig_amp_config)
-        significance[i] = sig_poisson.get_significance(sig_pe, bkg_pe)
+        return float(sig_poisson.get_significance(sig_pe, bkg_pe))
 
+    def negative_significance(x):
+        return -eval_significance(x[0])
+
+    result = minimize(negative_significance, 
+                x0=init_angular, 
+                method = 'L-BFGS-B',
+                bounds = boundary,
+                options={'maxcor': 100, 'ftol': 1e-15, 'maxiter': 10000, 'maxls': 50})
+
+    max_angular[ib] = result.x[0]
+    max_significance[ib] = -result.fun
+    print(f"Find maximum significance: {-result.fun:2f} at {result.x[0]:2f} mas, with baseline {bl:.0f} m, boundary: {boundary}")
     color = next(cycol)
-    #trans_map_cont = ax.plot(angular_separation * 10. / dt, significance, color=color, label=f"{dt:.0f}pc")
-    trans_map_cont = ax.plot(angular_separation, significance, color=color, label=f"{dt:.0f}pc")
+    ax.plot(angular_separation, np.array([eval_significance(angular) for angular in angular_separation]), color=color, label=f"{bl:.0f}m")
+    ax.scatter(result.x[0], -result.fun, marker='*', color='black')
 
 ax.set_xlabel("Angular / mas")
 ax.set_ylabel("Significance")
-#ax.set_xlim([10., 200.])
-#ax.set_ylim(bottom=0.5)
-#ax.set_yscale('log')
 
 ax.legend()
 
+def fit_model(data, param):
+    return param[0]*data
+init_val = [1700.]
+boundary = [(1400., 1900.)]
+
+def loss(param):
+    #return np.fabs(np.sum(max_significance - fit_model(baseline, param)))
+    return np.fabs(np.sum(max_angular - fit_model(1./baseline, param)))
+result = basinhopping(loss, 
+            x0=init_val, 
+            minimizer_kwargs={'method': 'L-BFGS-B', 'bounds': boundary, 'jac': False, 
+                                'options': {'maxcor': 1000, 'ftol': 1e-10, 'maxiter': 100000, 'maxls': 50}}, 
+            stepsize=100,
+            niter=10000,
+            niter_success=500)
+fig, ax2 = plt.subplots()
+#ax.scatter(max_angular, max_significance, marker='*', color='black')
+#ax.scatter(versus_baseline, max_significance, marker='*', color='black')
+ax2.scatter(1./baseline, max_angular, marker='*', color='black')
+#ax.scatter(baseline, max_significance, marker='*', color='black')
+bl_array = np.linspace(0.,1./baseline, 100)
+ax2.plot(bl_array, fit_model(bl_array, result.x), color='b')
+
+print(f"{result.x}")
+
+ax2.set_xlabel("1 / Baseline [$\\rm{{m^{{-1}}}}$]")
+ax2.set_ylabel("Angular / mas")
+#ax.set_ylabel("Significance")
+
+correlation_matrix = np.corrcoef(1./baseline, max_angular)
+print(correlation_matrix)
+
 plt.show()
+
 
 
 
