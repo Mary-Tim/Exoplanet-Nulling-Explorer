@@ -30,6 +30,7 @@ class FitResult():
                        }
         self.nll_model = None
         self.__auto_save = auto_save
+        print(output_path)
         if self.__auto_save:
             start_time = datetime.now()
             if output_path is None:
@@ -53,7 +54,7 @@ class FitResult():
         self.__result['best_nll'] = scipy_result.fun
         # The name of parameters
         #self.__result['param_name'] = self.nll_model.free_param_list.keys()
-        self.__result['param_name'] = [name[name.find(".")+1:] for name in self.nll_model.free_param_list.keys()]
+        self.__result['param_name'] = [name[name.find(".")+1:] for name in self.nll_model.name_of_params_flat]
         # The fit result of parameters
         self.__result['param_val'] = scipy_result.x
         # set units

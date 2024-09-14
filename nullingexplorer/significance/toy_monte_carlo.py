@@ -45,7 +45,7 @@ class ToyMonteCarlo():
 
         # Fit toy MC
         print("do_a_toy(): Fit toy MC ......")
-        fitter = ENEFitter(amp = AmplitudeCreator(config=fit_amp_config), data=data, auto_save=save_toy_result, output_path=self.__path, multi_gpu=self.__multi_gpu, *args, **kwargs)
+        fitter = ENEFitter(amp = AmplitudeCreator(config=fit_amp_config), data=data, auto_save=save_toy_result, output_path=self.__path, multi_gpu=self.__multi_gpu, check_boundary=False, *args, **kwargs)
         #for planet in fit_amp_config['Amplitude']:
         #    fitter.search_planet(planet, random_number=random_fit_number)
         result = fitter.fit_all(if_random=True, if_std_err=True, random_number=random_fit_number)

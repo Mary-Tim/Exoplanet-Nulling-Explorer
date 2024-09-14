@@ -18,11 +18,11 @@ plt.style.use(mplhep.style.LHCb2)
 nbins = 20
 
 # 30m baseline
-#hdf5_path = "results/PoissonObs_20240821_104947/toy_nll_distribution.hdf5"
+hdf5_path = "../results/PoissonObs_20240821_104947/toy_nll_distribution.hdf5"
 # 10m baseline
 #hdf5_path = "results/PoissonObs_20240821_113732/toy_nll_distribution.hdf5"
 # LIFE config
-hdf5_path = "results/PoissonObs_20240826_113003/toy_nll_distribution.hdf5"
+#hdf5_path = "results/PoissonObs_20240826_113003/toy_nll_distribution.hdf5"
 #hdf5_path = "results/PoissonObs_20240826_165153/toy_nll_distribution.hdf5"
 
 result = {}
@@ -76,4 +76,5 @@ for i, key in enumerate(draw_keys):
     ax.set_xlim(draw_range[i][0], draw_range[i][1])
     ax.legend(fontsize='x-large')
 
+plt.savefig(f"{hdf5_path.split('/')[-1].split('.')[0]}.pdf")
 plt.show()

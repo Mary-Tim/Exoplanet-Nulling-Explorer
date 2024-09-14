@@ -52,7 +52,7 @@ class ENEFitter():
         return result
 
     @staticmethod
-    def scipy_basinhopping(NLL, stepsize=10, niter=100, niter_success=20, maxls=20, init_val=None, min_method='L-BFGS-B', *args, **kargs):
+    def scipy_basinhopping(NLL, stepsize=0.25, niter=10000, niter_success=20, maxls=50, init_val=None, min_method='L-BFGS-B', *args, **kargs):
         boundary = NLL.get_boundaries()
         boundary_lo = np.array([bound[0] for bound in boundary])
         boundary_hi = np.array([bound[1] for bound in boundary])
@@ -61,7 +61,8 @@ class ENEFitter():
         result = basinhopping(NLL.objective, 
                     x0=init_val, 
                     minimizer_kwargs={'method': min_method, 'bounds': boundary, 'jac': True, 
-                                        'options': {'maxcor': 1000, 'ftol': 1e-10, 'maxiter': 100000, 'maxls': maxls}}, 
+                                        'options': {'maxcor': 100, 'ftol': 1e-10, 'maxiter': 10000, 'maxls': maxls}}, 
+                    T=2.5,
                     stepsize=stepsize,
                     niter=niter,
                     niter_success=niter_success)
@@ -73,9 +74,9 @@ class ENEFitter():
         # Initialize array to record all attempted parameter values based on the length of fit_params
         if len(fit_params) != 0:
             NLL.config_fit_params(fit_params)
-            scan_result = np.zeros((iter_number, len(fit_params)))
-        else:
-            scan_result = np.zeros((iter_number, NLL.num_of_params))
+            #scan_result = np.zeros((iter_number, len(fit_params)))
+        #else:
+        scan_result = np.zeros((iter_number, NLL.num_of_params))
         boundary = NLL.get_boundaries()
         # For each attempt of the random search 
         for i in tqdm(range(iter_number)):

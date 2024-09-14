@@ -7,7 +7,7 @@ class BaseSpectrum(ModuleRegister, cls_type='Spectrum', cls_name='base'):
     def __init_subclass__(cls, cls_name=None):
         return super().__init_subclass__(cls_type='Spectrum', cls_name=cls_name)
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         super(BaseSpectrum, self).__init__()
 
     def forward(self, x):

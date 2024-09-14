@@ -88,13 +88,25 @@ class AmplitudeCreator(nn.Module):
             spectrum = get_spectrum(config)()
             return spectrum
 
-        spectrum = get_spectrum(config['Model'])()
-        if 'Parameters' in config['Spectrum'].keys():
-            self.parameters_setting(spectrum, config['Spectrum']['Parameters'])
+        if 'Spectrum' in config.keys():
+            spectrum.spectrum = self.spectrum_register(config['Spectrum'])
+
+        if 'Initialize' in config.keys():
+            spectrum = get_spectrum(config['Model'])(**config['Initialize'])
+        else:
+            spectrum = get_spectrum(config['Model'])()
+        if 'Parameters' in config.keys():
+            self.parameters_setting(spectrum, config['Parameters'])
         else:
             self.parameters_setting(spectrum)
-        if 'Buffers' in config['Spectrum'].keys():
-            self.buffer_setting(spectrum, config=config['Spectrum']['Buffers'])
+        if 'Buffers' in config.keys():
+            self.buffer_setting(spectrum, config=config['Buffers'])
+
+        #if hasattr(spectrum, 'initialize'):
+        #    if 'Initialize' in config.keys():
+        #        spectrum.initialize(config['Initialize'])
+        #    else:
+        #        spectrum.initialize()
 
         return spectrum
 
@@ -103,6 +115,8 @@ class AmplitudeCreator(nn.Module):
             if hasattr(model, key):
                 if isinstance(val, float):
                     getattr(model, key).data.fill_(val)
+                if isinstance(val, list):
+                    getattr(model, key).data.fill_(torch.tensor(val))
                 elif isinstance(val, dict):
                     getattr(model, key).data.fill_(val['mean'])
             else:
@@ -115,7 +129,11 @@ class AmplitudeCreator(nn.Module):
             if key.find('.') != -1:
                 continue
             if key not in model.boundary.keys():
-                model.boundary[key] = torch.tensor([-1.e6, 1.e6])
+                if param.numel() == 1:  # Scalar parameters
+                    model.boundary[key] = torch.tensor([-1.e6, 1.e6])
+                else:  # 1D vector parameters
+                    model.boundary[key] = torch.tensor([torch.ones(param.numel())*1e-6, torch.ones(param.numel())*1.e6])
+                
         if config is not None:
             for key, val in config.items():
                 if isinstance(val, dict):
@@ -123,8 +141,16 @@ class AmplitudeCreator(nn.Module):
                         raise KeyError(f"Model {model} do not have parameter {key}")
                     getattr(model, key).data.fill_(val['mean'])
                     if 'min' in val.keys():
-                        model.boundary[key][0] = float(val['min'])
+                        model.boundary[key][0] = val['min']
                     if 'max' in val.keys():
-                        model.boundary[key][1] = float(val['max'])
+                        model.boundary[key][1] = val['max']
                     if 'fixed' in val.keys():
                         getattr(model, key).requires_grad = not bool(val['fixed'])
+                    if 'gaus_cons' in val.keys():
+                        self.set_gaussian_constraint(model, key, val['gaus_cons'])
+
+    def set_gaussian_constraint(self, model, key, config):
+        if not hasattr(model, 'gaussian_constraints'):
+            model.__setattr__("gaussian_constraints", {})
+
+        model.gaussian_constraints[key] = (config['mu'], config['sigma'])

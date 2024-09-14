@@ -44,16 +44,28 @@ obs_config = {
 gen_amp_config = {
     'Amplitude':{
         'earth':{
-            'Model': 'PlanetBlackBody',
-            'Spectrum': 'BinnedBlackBody',
+            #'Model': 'PlanetBlackBody',
+            #'Spectrum': 'BinnedBlackBody',
+            #'Parameters':
+            #{
+            #    'radius':         {'mean': 6371.e3},
+            #    'temperature':    {'mean': 285.},
+            #    'ra':            {'mean': 62.5},
+            #    'dec':            {'mean': 78.1},
+            #},
+            'Model': 'PlanetCartesianCoordinates',
             'Parameters':
             {
-                'radius':         {'mean': 6371.e3},
-                'temperature':    {'mean': 285.},
-                #'ra':            {'mean': 50.},
-                #'dec':            {'mean': 100.},
                 'ra':            {'mean': 62.5},
                 'dec':            {'mean': 78.1},
+            },
+            'Spectrum': {
+                'Model': 'BlackBodySpectrum',
+                'Parameters':
+                {
+                    'radius':         {'mean': 6371.e3},
+                    'temperature':    {'mean': 285.},
+                },
             },
         },
         'star':{
@@ -82,16 +94,37 @@ fit_amp_config = {
     'Amplitude':{
         'earth':{
             #'Model': 'RelativePlanetBlackBody',
-            'Model': 'RelativePolarPlanetBlackBody',
-            'Spectrum': 'BinnedBlackBody',
+            #'Model': 'RelativePolarPlanetBlackBody',
+            #'Spectrum': 'BinnedBlackBody',
+            #'Parameters':
+            #{
+            #    'r_radius':         {'mean': 1.e-5, 'min': 0., 'max': 5., 'fixed': False},
+            #    'r_temperature':    {'mean': 1.e-5, 'min': 0., 'max': 5., 'fixed': False},
+            #    'r_angular':        {'mean': 1., 'min': 0.1, 'max': 3., 'fixed': False},
+            #    'r_polar':          {'mean': 0., 'min': 0., 'max': 2.*torch.pi, 'fixed': False},
+            #},
+            'Model': 'RelativePlanetPolarCoordinates',
             'Parameters':
             {
-                'r_radius':         {'mean': 1.e-5, 'min': 0., 'max': 5., 'fixed': False},
-                'r_temperature':    {'mean': 1.e-5, 'min': 0., 'max': 5., 'fixed': False},
-                #'r_ra':             {'mean': 0., 'min': -2., 'max': 2., 'fixed': False},
-                #'r_dec':            {'mean': 0., 'min': -2., 'max': 2., 'fixed': False},
-                'r_angular':        {'mean': 1., 'min': 0.1, 'max': 3., 'fixed': False},
-                'r_polar':          {'mean': 0., 'min': 0., 'max': 2.*torch.pi, 'fixed': False},
+                #'r_angular':        {'mean': 1., 'min': 0.1, 'max': 3., 'fixed': False},
+                #'r_polar':          {'mean': 0., 'min': 0., 'max': 2.*torch.pi, 'fixed': False},
+                'r_angular':        {'mean': 1., 'min': 0.1, 'max': 3., 'fixed': False, 'gaus_cons': {'mu': 1., 'sigma':0.02}},
+                'r_polar':          {'mean': 0., 'min': 0., 'max': 2.*torch.pi, 'fixed': False, 'gaus_cons': {'mu': 0.8958, 'sigma':0.02}},
+            },
+            'Spectrum': {
+                #'Model': 'RelativeBlackBodySpectrum',
+                #'Parameters':
+                #{
+                #    'r_radius':         {'mean': 1.e-5, 'min': 0., 'max': 5., 'fixed': False},
+                #    'r_temperature':    {'mean': 1.e-5, 'min': 0., 'max': 5., 'fixed': False},
+                #},
+                'Model': 'CubicSplineInterpolation',
+                'Initialize':
+                {
+                    'wl_min':         5,
+                    'wl_max':         17,
+                    'num_points':     12,
+                },
             },
         },
     },
@@ -110,7 +143,7 @@ fit_amp_config = {
 
 def main():
     # Set device during generation
-    torch.set_default_device('cuda:1')
+    torch.set_default_device('cuda:0')
     torch.set_default_dtype(torch.float64)
     torch.multiprocessing.set_start_method('spawn')
 
@@ -129,9 +162,10 @@ def main():
     # Estimation
     print("Fitting ......")
     fit_model = AmplitudeCreator(config=fit_amp_config)
+    fitter = ENEFitter(fit_model, diff_data, multi_gpu=False, check_boundary=False)
     #fit_model_compile = torch.compile(fit_model) # torch.compile doesn't support AMD Radeon VII (gfx906)
-    fitter = ENEFitter(fit_model, diff_data, multi_gpu=True)
-    fitter.search_planet('earth', draw=True, std_err=True, show=True, random_number=16000, position_name=['earth.r_polar', 'earth.r_angular'], polar=True)
+    #fitter = ENEFitter(fit_model_compile, diff_data, multi_gpu=False)
+    fitter.search_planet('earth', draw=True, std_err=True, show=True, random_number=400, position_name=['earth.r_polar', 'earth.r_angular'], polar=True)
 
     print(f"NLL without earth: {fitter.NLL.call_nll_nosig()}")
 

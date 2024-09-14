@@ -19,9 +19,9 @@ plt.style.use(mplhep.style.LHCb2)
 nbins = 20
 
 # 30m baseline
-#hdf5_path = "results/PoissonObs_20240821_104947/toy_nll_distribution.hdf5"
+hdf5_path = "../results/PoissonObs_20240821_104947/toy_nll_distribution.hdf5"
 # 10m baseline
-hdf5_path = "results/PoissonObs_20240821_113732/toy_nll_distribution.hdf5"
+#hdf5_path = "../results/PoissonObs_20240821_113732/toy_nll_distribution.hdf5"
 
 result = {}
 file = h5py.File(hdf5_path, "r")
@@ -61,9 +61,8 @@ def draw_obs(istar):
     total_index = np.where(result['Nstar'] <= istar)
     obs_index = np.where((result['sigma'] >= 10) & (result['Nstar'] <= istar))
 
-    fig = plt.figure(figsize=(12, 10))
     for i, key in enumerate(draw_keys):
-        ax = fig.add_subplot(2, 2, i+1)
+        fig, ax = plt.subplots(figsize=(6,6))
         counts, bins = np.histogram(result[key][total_index]*scale[i], bins=nbins, range=(draw_range[i][0], draw_range[i][1]))
         obs_counts, obs_bins = np.histogram(result[key][obs_index]* scale[i], bins=nbins, range=(draw_range[i][0], draw_range[i][1]))
 
@@ -74,9 +73,10 @@ def draw_obs(istar):
         ax.set_xlim(draw_range[i][0], draw_range[i][1])
         ax.legend(fontsize='x-large')
 
+        plt.savefig(f"../results/obs_predict_split/obs_predict_{istar}_{key}.jpg")
+        plt.close()
+
     #plt.show()
-    plt.savefig(f"results/obs_predict/obs_predict_{istar}.jpg")
-    plt.close()
 
 if __name__ == '__main__':
     n_star = np.max(result['Nstar']) + 1

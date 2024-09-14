@@ -10,12 +10,12 @@ obs_config = {
     'Spectrum':{
         'Type': 'Resolution',
         'R': 20,
-        'Low': 4.,
-        'High': 18.5,        # unit: micrometer
+        'Low': 5.,
+        'High': 17,        # unit: micrometer
     },
     'Observation':{
         'ObsNumber': 360,
-        'IntegrationTime': 200,  # unit: second
+        'IntegrationTime': 300,  # unit: second
         'ObsMode': [1, -1],  # [1] or [-1] or [1, -1]
         'Phase':{
             'Start' : 0.,
@@ -69,33 +69,27 @@ gen_amp_config = {
         'star_radius': 695500,  # Star radius [kilometer]
         'star_temperature': 5772,   # Star temperature [Kelvin]
         'target_longitude': 0.,     # Ecliptic longitude [degree]
-        'target_latitude': 0.,      # Ecliptic latitude  [degree]
+        'target_latitude': 30.,     # Ecliptic latitude  [degree]
         'zodi_level': 3,        # scale parameter for exo-zodi [dimensionless]
     }
 }
 
 fit_amp_config = {
     'Amplitude':{
-        #'venus':{
-        #    'Model': 'RelativePlanetBlackBody',
-        #    'Spectrum': 'BinnedBlackBody',
-        #    'Parameters':
-        #    {
-        #        'r_radius':         {'mean': 1e-5, 'min': 0.7, 'max': 1.1, 'fixed': False},
-        #        'r_temperature':    {'mean': 1e-5, 'min': 2.0, 'max': 3.0, 'fixed': False},
-        #        'r_ra':             {'mean': 1., 'min': -0.8, 'max': -0.2, 'fixed': False},
-        #        'r_dec':            {'mean': 1., 'min': 0.2, 'max': 0.8, 'fixed': False},
-        #    },
-        #},
         'earth':{
-            'Model': 'RelativePlanetBlackBody',
-            'Spectrum': 'BinnedBlackBody',
+            'Model': 'RelativePlanetPolarCoordinates',
             'Parameters':
             {
-                'r_radius':         {'mean': 1e-5, 'min': 0., 'max': 100., 'fixed': False},
-                'r_temperature':    {'mean': 1e-5, 'min': 0., 'max': 100., 'fixed': False},
-                'r_ra':             {'mean': 1., 'min': -10., 'max': 10., 'fixed': False},
-                'r_dec':            {'mean': 1., 'min': -10., 'max': 10., 'fixed': False},
+                'r_angular':        {'mean': 1., 'min': 0.1, 'max': 3., 'fixed': False},
+                'r_polar':          {'mean': 0., 'min': 0., 'max': 2.*torch.pi, 'fixed': False},
+            },
+            'Spectrum': {
+                'Model': 'RelativeBlackBodySpectrum',
+                'Parameters':
+                {
+                    'r_radius':         {'mean': 1.e-5, 'min': 0., 'max': 5., 'fixed': False},
+                    'r_temperature':    {'mean': 1.e-5, 'min': 0., 'max': 5., 'fixed': False},
+                },
             },
         },
     },
@@ -106,7 +100,7 @@ fit_amp_config = {
         'star_radius': 695500,  # Star radius [kilometer]
         'star_temperature': 5772,   # Star temperature [Kelvin]
         'target_longitude': 0.,     # Ecliptic longitude [degree]
-        'target_latitude': 0.,      # Ecliptic latitude  [degree]
+        'target_latitude': 30.,      # Ecliptic latitude  [degree]
         'zodi_level': 3,        # scale parameter for exo-zodi [dimensionless]
     }
 }
@@ -114,7 +108,7 @@ fit_amp_config = {
 def main():
     from nullingexplorer.significance import ChiSquareSignificance
     chisq_signi = ChiSquareSignificance(planet='earth', obs_config=obs_config, gen_amp_config=gen_amp_config, fit_amp_config=fit_amp_config)
-    chisq_signi.pseudoexperiments(number_of_toy_mc=100, random_fit_number=50, stepsize=5)
+    chisq_signi.pseudoexperiments(number_of_toy_mc=100, random_fit_number=100, save=True)
 
 if __name__ == '__main__':
     main()

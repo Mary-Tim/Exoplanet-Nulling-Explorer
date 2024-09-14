@@ -51,7 +51,7 @@ class BinnedBlackBody(BaseSpectrum):
     def __init__(self):
         super().__init__()
         # module
-        self.unbinned_black_body = BlackBody()
+        self.black_body = BlackBody()
         # register constants
         self.register_buffer('c', torch.tensor(Constants._light_speed))
         self.register_buffer('exp_para', torch.tensor(Constants._Planck_constant * Constants._light_speed / Constants._Boltzmann_constant))
@@ -67,7 +67,7 @@ class BinnedBlackBody(BaseSpectrum):
             wavelength: <Tensor> Center value of each wavelength bin (unit: meter)
             wl_width: <Tensor> Width of each wavelength bin (unit: meter)
         '''
-        return self.unbinned_black_body(temperature, data['wl_mid']) * (data['wl_hi'] - data['wl_lo'])
+        return self.black_body(temperature, data['wl_mid']) * (data['wl_hi'] - data['wl_lo'])
 
 class TorchQuadBlackBody(BaseSpectrum):
     def __init__(self):
