@@ -5,9 +5,9 @@ from .base_instrument import BaseInstrument
 from nullingexplorer.utils import Constants as cons
 from nullingexplorer.utils import Configuration as cfg
 
-class MiYinBasicType(BaseInstrument):
+class MiYinTwoMirror(BaseInstrument):
     def __init__(self):
-        super(MiYinBasicType, self).__init__()
+        super(MiYinTwoMirror, self).__init__()
         
         # Instrument constant parameters
         self.register_buffer('mirror_diameter', cfg.get_property('mirror_diameter'))      # Diameter of each mirror (unit: meter)
@@ -15,7 +15,7 @@ class MiYinBasicType(BaseInstrument):
         self.register_buffer('instrument_eff', cfg.get_property('instrument_eff'))   # Instrument throughput efficiency (dimensionless)
         self.register_buffer('fov_scale', cfg.get_property('fov_scale'))
 
-        self.register_buffer('total_eff', 4. * torch.pi * (self.mirror_diameter/2.)**2 * self.quantum_eff * self.instrument_eff)
+        self.register_buffer('total_eff', 2. * torch.pi * (self.mirror_diameter/2.)**2 * self.quantum_eff * self.instrument_eff)
 
         # register nn.Tanh for FoV estimation
         self.tanh = nn.Tanh()

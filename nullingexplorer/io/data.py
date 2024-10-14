@@ -65,6 +65,34 @@ class DataHandler():
             self.data = self.data.reshape(obs_creator.obs_num,obs_creator.spec_num)
         return self.data
         
+    def draw(self, obs_creator: ObservationCreator, draw_err=False):
+        phase_number = obs_creator.obs_num
+        wl_number = obs_creator.spec_num
+        phase_bins = self.data['phase'].reshape(phase_number, wl_number).cpu().detach().numpy()
+        wl_bins = self.data['wl_mid'].reshape(phase_number, wl_number).cpu().detach().numpy()
+
+        def draw_data(ax, name, label=None):
+            if label == None:
+                label = name
+            data = self.data[name].reshape(phase_number, wl_number)
+            if name == 'pe_uncertainty':
+                data[data == 1e10] = 0.
+            cm_data = ax.pcolormesh(phase_bins, wl_bins, 
+                                    data.cpu().detach().numpy(), 
+                                    cmap = plt.get_cmap("bwr"))
+            ax.set_xlabel("phase / rad")
+            ax.set_ylabel("wavelength / m")
+            fig.colorbar(cm_data, label=label, aspect=5, pad=0.01)
+
+        if draw_err == False:
+            fig, ax = plt.subplots(figsize=(24.,3.5))
+            draw_data(ax, name='photon_electron', label="Photon electron")
+        else:
+            fig, ax = plt.subplots(2, 1, figsize=(24.,7.))
+            draw_data(ax[0], name='photon_electron', label="Photon electron")
+            draw_data(ax[1], name='pe_uncertainty', label="Uncertainty")
+
+        plt.show()
 
     '''
     phase: torch.Tensor

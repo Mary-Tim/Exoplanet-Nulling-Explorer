@@ -131,12 +131,12 @@ class SpectrumGenerator():
         lo = lo_end
         while(1):
             hi = next_hi(lo)
-            if hi > hi_end:
-                break
             self.wl_lo[self.spec_num] = lo
             self.wl_hi[self.spec_num] = hi
             self.spec_num += 1
             lo = hi
+            if hi > hi_end:
+                break
         if self.spec_num > max_length:
             raise ValueError('Wavelength list overflow. Please enlarge the max_length.')
 

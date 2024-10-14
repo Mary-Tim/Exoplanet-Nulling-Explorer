@@ -35,7 +35,8 @@ def Pull():
     import uproot
     import math
 
-    path = "results/Signi_20240726_111904"
+    #path = "results/Signi_20240726_111904"
+    path = "results/Signi_20240916_231055"
     file= h5py.File(f"{path}/toy_nll_distribution.hdf5")
     bkg_nll = file['bkg_nll_array'][:]
     sig_nll = file['sig_nll_array'][:]
@@ -55,14 +56,15 @@ def Pull():
     m = fitChi2Hist(d2NLLlist, stats.chi2.pdf)
     print(tab.tabulate(*m.params.to_table()))
     df = m.values["df"]; loc=0; scale=1
-    Nbins = 20 # number of bins (edit here)
+    Nbins = 10 # number of bins (edit here)
     plt.figure(figsize=[12,8])
     _, bins, _ = plt.hist(d2NLLlist, bins=Nbins, alpha=0.6, label="Toy 2ΔLL distribution")
     binwidth = np.mean(bins[1:]-bins[:-1])
     xx = np.linspace(0,80,500) # x range of overlaid chi2 curve (edit here)
     plt.plot(xx, Ndata*binwidth*stats.chi2.pdf(xx,df=df,loc=loc,scale=scale),'r', label="Toy 2ΔLL fitted")
 
-    d2NLL = 2*abs(14870.324-15013.886) # Δ2NLL from real data cfit (edit here)
+    #d2NLL = 2*abs(14870.324-15013.886) # Δ2NLL from real data cfit (edit here)
+    d2NLL = 2*abs(10774.024-10946.437603954346) # Δ2NLL from real data cfit (edit here)
 
     stick_height = 20 # the height of vertical bars in the plot (edit here)
     plt.plot(np.ones(2)*stats.chi2.ppf(0.997,df=df,loc=loc,scale=scale),np.linspace(0,stick_height,2),'r--', label="99.7% limit (3σ)")

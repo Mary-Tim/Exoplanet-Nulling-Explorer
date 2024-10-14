@@ -1,5 +1,5 @@
 import sys
-sys.path.append('..')
+sys.path.append('../..')
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -19,8 +19,8 @@ obs_config = {
     'Spectrum':{
         'Type': 'Resolution',
         'R': 20,
-        'Low': 4.,
-        'High': 18.5,        # unit: micrometer
+        'Low': 0.9,
+        'High': 1.8,        # unit: micrometer
     },
     'Observation':{
         'ObsNumber': 360,
@@ -44,10 +44,11 @@ obs_config = {
         'formation_longitude': 0.,  # Formation longitude [degree] 
         'formation_latitude' : 0.,  # Formation latitude [degree] 
         # Instrument parameters
-        'mirror_diameter': 4,   # Diameter of MiYin primary mirror [meter]
+        'mirror_diameter': 0.2,   # Diameter of MiYin primary mirror [meter]
         'quantum_eff': 0.7,     # Quantum efficiency of detector [dimensionless]
         'instrument_eff': 0.05, # Instrument throughput efficiency [dimensionless]
         'nulling_depth': 0.,    # Nulling depth of the instrument [dimensionless, within [0,1) ]
+        'fov_scale': 100000.
     }
 }
 
@@ -58,19 +59,19 @@ sig_amp_config = {
             'Spectrum': 'InterpBlackBody',
             'Parameters':
             {
-                'radius':         {'mean': 6371.e3},
-                'temperature':    {'mean': 285.},
-                'ra':            {'mean': 62.5},
-                'dec':            {'mean': 78.1},
+                'radius':         {'mean': 6371.e3*1.4},
+                'temperature':    {'mean': 25000},
+                'ra':             {'mean': 7800.},
+                'dec':            {'mean': 0.},
             },
         },
     },
     'Instrument': {'Model': 'MiYinBasicType'},
-    'TransmissionMap': {'Model': 'DualChoppedDifferential'},
+    'TransmissionMap': {'Model': 'DualChoppedDestructive'},
     'Configuration':{
-        'distance': 10,         # distance between Miyin and target [pc]
-        'star_radius': 695500,  # Star radius [kilometer]
-        'star_temperature': 5772,   # Star temperature [Kelvin]
+        'distance': 2.637,         # distance between Miyin and target [pc]
+        'star_radius': 695500*1.7,  # Star radius [kilometer]
+        'star_temperature': 9940,   # Star temperature [Kelvin]
         'target_longitude': 0.,     # Ecliptic longitude [degree]
         'target_latitude': 0.,      # Ecliptic latitude  [degree]
         'zodi_level': 3,        # scale parameter for exo-zodi [dimensionless]
@@ -90,13 +91,12 @@ bkg_amp_config = {
         },
     },
     #'Instrument': {'Model': 'MiYinBasicType'},
-    'Instrument': {'Model': 'MiYinBasicType',
-                   'Buffers': {'fov_scale': 100.}},
+    'Instrument': {'Model': 'MiYinBasicType'},
     'TransmissionMap': {'Model': 'DualChoppedDestructive'},
     'Configuration':{
-        'distance': 10,         # distance between Miyin and target [pc]
-        'star_radius': 695500,  # Star radius [kilometer]
-        'star_temperature': 5772,   # Star temperature [Kelvin]
+        'distance': 2.637,         # distance between Miyin and target [pc]
+        'star_radius': 695500*1.7,  # Star radius [kilometer]
+        'star_temperature': 9940,   # Star temperature [Kelvin]
         'target_longitude': 0.,     # Ecliptic longitude [degree]
         'target_latitude': 0.,      # Ecliptic latitude  [degree]
         'zodi_level': 3,        # scale parameter for exo-zodi [dimensionless]
@@ -113,6 +113,8 @@ sig_pe = sig_poisson.gen_sig_pe()
 
 sig_poisson.bkg_amp_config = bkg_amp_config
 bkg_pe = sig_poisson.gen_bkg_pe()
+print(sig_pe)
+print(bkg_pe)
 
 def sig_point(time):
     return sig_poisson.get_significance(sig_pe*time, bkg_pe*time)

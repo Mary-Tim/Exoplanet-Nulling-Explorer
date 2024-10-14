@@ -18,16 +18,16 @@ plt.style.use(mplhep.style.LHCb2)
 nbins = 25
 draw_sigma = 4
 init_val = {
-    'earth.r_radius':       {'mu': 0., 'sigma': 0.2}, 
-    'earth.r_temperature':  {'mu': 0., 'sigma': 0.1}, 
-    'earth.r_angular':      {'mu': 0., 'sigma': 0.002}, 
-    'earth.r_polar':        {'mu': 0., 'sigma': 0.002},
+    'earth.r_radius':       {'mu': 0., 'sigma': 1.}, 
+    'earth.r_temperature':  {'mu': 0., 'sigma': 1.}, 
+    'earth.r_angular':      {'mu': 0., 'sigma': 1.}, 
+    'earth.r_polar':        {'mu': 0., 'sigma': 1.},
 }
 limits = {
-    'earth.r_radius':       {'mu': (-0.50, 0.50), 'sigma': (5e-3, 1e-0)}, 
-    'earth.r_temperature':  {'mu': (-50, 50), 'sigma': (5e-3, 1e2)}, 
-    'earth.r_angular':      {'mu': (-0.02, 0.02), 'sigma': (5e-5, 1e-2)}, 
-    'earth.r_polar':        {'mu': (-0.02, 0.02), 'sigma': (5e-4, 5e-1)},
+    'earth.r_radius':       {'mu': (-0.50, 0.50), 'sigma': (0.01, 10)}, 
+    'earth.r_temperature':  {'mu': (-0.50, 0.50), 'sigma': (0.01, 10)}, 
+    'earth.r_angular':      {'mu': (-0.50, 0.50), 'sigma': (0.01, 10)}, 
+    'earth.r_polar':        {'mu': (-0.50, 0.50), 'sigma': (0.01, 10)},
 }
 # 360, 1e6
 hdf5_path = "../results/Toy_20240806_173118/toy_MC_result.hdf5"
@@ -40,11 +40,15 @@ hdf5_path = "../results/Toy_20240806_173118/toy_MC_result.hdf5"
 #hdf5_path = "../results/Toy_20240826_172237/toy_MC_result.hdf5"
 
 x_titles = [
-    'Radius [$R_{{\\rm earth}}$]',
-    'Temperature [K]',
-    'Distance [AU]',
-    'Polar Angle [radian]',
+    'Radius',
+    'Temperature',
+    'Distance',
+    'Polar Angle',
 ]
+#x_titles = ['Radius [$R_{{\\rm earth}}$]',
+#            'Temperature [K]',
+#            'Angular Separation [mas]',
+#            'Polar Angle [radian]']
 
 def fit_gauss(data, init_mu=0., init_sigma=0.1):
     def pdf(x, mu, sigma):
@@ -71,10 +75,13 @@ truth_convert = np.zeros((len(result["fitted_val"]), 4))
 truth_convert[:, 0] = result["true_val"][:, 0] / 6371e3
 truth_convert[:, 1] = result["true_val"][:, 1]
 truth_convert[:, 2], truth_convert[:, 3] = to_polar(result["true_val"][:, 2], result["true_val"][:, 3])
-truth_convert[:, 2] = truth_convert[:, 2] / 100.
+truth_convert[:, 2] = truth_convert[:, 2]
 
 result['fitted_val'][:, 1] = result['fitted_val'][:, 1] * 285.
-result['fitted_val'][:, 2] = result['fitted_val'][:, 2]
+result['fitted_val'][:, 2] = result['fitted_val'][:, 2] * 100.
+
+result['std_err'][:, 1] = result['std_err'][:, 1] * 285.
+result['std_err'][:, 2] = result['std_err'][:, 2] * 100.
 
 truth_convert[truth_convert[:,3]<0, 3] = truth_convert[truth_convert[:,3]<0, 3] + 2*np.pi
 
@@ -83,8 +90,8 @@ num_of_data = len(result["fitted_val"])
 for i, name in enumerate(result["param_name"]):
 
     # fit with gaussian
-    residual = result["fitted_val"][:,i]-truth_convert[:,i]
-    m = fit_gauss(residual, init_mu=init_val[name]['mu'], init_sigma=init_val[name]['sigma'])
+    pull = (result["fitted_val"][:,i]-truth_convert[:,i]) / result['std_err'][:,i]
+    m = fit_gauss(pull, init_mu=init_val[name]['mu'], init_sigma=init_val[name]['sigma'])
     m.limits['mu'] = limits[name]['mu']
     m.limits['sigma'] = limits[name]['sigma']
     m.migrad()
@@ -95,7 +102,7 @@ for i, name in enumerate(result["param_name"]):
     range_hi = m.values["mu"] + m.values["sigma"] * draw_sigma
 
     ax = fig.add_subplot(2, 2, i+1)
-    counts, bins = np.histogram(residual, bins=nbins, range=(range_lo, range_hi))
+    counts, bins = np.histogram(pull, bins=nbins, range=(range_lo, range_hi))
     errors = np.sqrt(counts)
     #ax.errorbar(bins[:-1], counts, yerr=errors, marker='ok', color='black', capsize=5)
     ax.errorbar(bins[:-1], counts, yerr=errors, fmt='ok', markersize=10, capsize=5)
@@ -109,5 +116,5 @@ for i, name in enumerate(result["param_name"]):
 
     print(f"{result['param_name'][i]}:  \tmu: {m.values['mu']:.3e},\tsigma: {m.values['sigma']:.3e}")
 
-plt.savefig("residual.pdf")
+plt.savefig("pull.pdf")
 plt.show()

@@ -17,7 +17,7 @@ obs_config = {
     },
     'Observation':{
         'ObsNumber': 360,
-        'IntegrationTime': 200,  # unit: second
+        'IntegrationTime': 20000,  # unit: second
         'ObsMode': [1, -1],  # [1] or [-1] or [1, -1]
         'Phase':{
             'Start' : 0.,
@@ -103,33 +103,36 @@ fit_amp_config = {
             #    'r_angular':        {'mean': 1., 'min': 0.1, 'max': 3., 'fixed': False},
             #    'r_polar':          {'mean': 0., 'min': 0., 'max': 2.*torch.pi, 'fixed': False},
             #},
-            'Model': 'PlanetPolarCoordinates',
+            'Model': 'RelativePlanetPolarCoordinates',
             'Parameters':
             {
-                'au':        {'mean': 1., 'min': 0.1, 'max': 3., 'fixed': False},
-                'polar':          {'mean': 0., 'min': 0., 'max': 2.*torch.pi, 'fixed': False},
-                #'r_angular':        {'mean': 1., 'min': 0.1, 'max': 3., 'fixed': False, 'gaus_cons': {'mu': 1., 'sigma':0.02}},
-                #'r_polar':          {'mean': 0., 'min': 0., 'max': 2.*torch.pi, 'fixed': False, 'gaus_cons': {'mu': 0.8958, 'sigma':0.02}},
+                #'r_angular':        {'mean': 1., 'min': 0.1, 'max': 3., 'fixed': False},
+                #'r_polar':          {'mean': 0., 'min': 0., 'max': 2.*torch.pi, 'fixed': False},
+                'r_angular':        {'mean': 1., 'min': 0.1, 'max': 3., 'fixed': False, 'gaus_cons': {'mu': 1., 'sigma':0.02}},
+                'r_polar':          {'mean': 0., 'min': 0., 'max': 2.*torch.pi, 'fixed': False, 'gaus_cons': {'mu': 0.8958, 'sigma':0.02}},
             },
             'Spectrum': {
-                'Model': 'RelativeBlackBodySpectrum',
-                'Parameters':
-                {
-                    'r_radius':         {'mean': 1.e-5, 'min': 0., 'max': 5., 'fixed': False},
-                    'r_temperature':    {'mean': 1.e-5, 'min': 0., 'max': 5., 'fixed': False},
-                },
-                #'Model': 'CubicSplineInterpolation',
-                #'Initialize':
+                #'Model': 'RelativeBlackBodySpectrum',
+                #'Parameters':
                 #{
-                #    'wl_min':         5,
-                #    'wl_max':         17,
-                #    'num_points':     12,
+                #    'r_radius':         {'mean': 1.e-5, 'min': 0., 'max': 5., 'fixed': False},
+                #    'r_temperature':    {'mean': 1.e-5, 'min': 0., 'max': 5., 'fixed': False},
                 #},
+                #'Model': 'LinearInterpolation',
+                'Model': 'CubicSplineInterpolation',
+                #'Model': 'CubicSplineIntegral',
+                'Initialize':
+                {
+                    'wl_min':         5.5,
+                    'wl_max':         16.5,
+                    'num_points':     12,
+                },
             },
         },
     },
     'Instrument': 'MiYinBasicType',
-    'TransmissionMap': 'DualChoppedDifferential',
+    #'TransmissionMap': 'DualChoppedDifferential',
+    'TransmissionMap': 'PolarDualChoppedDifferential',
     'Configuration':{
         'distance': 10,         # distance between Miyin and target [pc]
         'star_radius': 695500,  # Star radius [kilometer]
@@ -164,7 +167,7 @@ def main():
     fitter = ENEFitter(fit_model, diff_data, multi_gpu=False, check_boundary=False)
     #fit_model_compile = torch.compile(fit_model) # torch.compile doesn't support AMD Radeon VII (gfx906)
     #fitter = ENEFitter(fit_model_compile, diff_data, multi_gpu=False)
-    fitter.search_planet('earth', draw=True, std_err=True, show=True, random_number=400, position_name=['earth.polar', 'earth.au'], polar=True)
+    fitter.search_planet('earth', draw=True, std_err=True, show=True, random_number=20, position_name=['earth.r_polar', 'earth.r_angular'], polar=True)
 
     print(f"NLL without earth: {fitter.NLL.call_nll_nosig()}")
 

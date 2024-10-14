@@ -73,6 +73,7 @@ class AmplitudeCreator(nn.Module):
     def amplitude_register(self, name, config, trans_class):
         self.__setattr__(name, get_amplitude(config['Model'])())
         amp = self.__getattr__(name)
+        del amp.trans_map
         amp.trans_map = trans_class()
         if 'Spectrum' in config.keys():
             amp.spectrum = self.spectrum_register(config['Spectrum'])
@@ -112,8 +113,9 @@ class AmplitudeCreator(nn.Module):
 
     def buffer_setting(self, model: nn.Module, config: dict):
         for key, val in config.items():
+            print(f"Set buffer: {key} to {val}")
             if hasattr(model, key):
-                if isinstance(val, float):
+                if isinstance(val, (int,float,)):
                     getattr(model, key).data.fill_(val)
                 if isinstance(val, list):
                     getattr(model, key).data.fill_(torch.tensor(val))

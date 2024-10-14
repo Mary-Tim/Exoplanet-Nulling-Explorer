@@ -21,13 +21,17 @@ amp_template = {
     'Amplitude':{
     },
     'Instrument': 'MiYinBasicType',
-    'TransmissionMap': 'DualChoppedDifferential',
+    #'TransmissionMap': 'DualChoppedDifferential',
+    #'TransmissionMap': 'DualChoppedDestructive',
+    'TransmissionMap': 'SingleBracewell',
     'Configuration':{
-        'distance': 10.,         # distance between Miyin and target [pc]
-        'star_radius': cons._sun_radius,  # Star radius [kilometer]
-        'star_temperature': 5773.,   # Star temperature [Kelvin]
+        #'distance': 10.,         # distance between Miyin and target [pc]
+        'distance': 4.2 * cons._light_year_to_meter / cons._pc_to_meter,         # distance between Miyin and target [pc]
+        #'star_radius': 0.0002*cons._sun_radius,  # Star radius [kilometer]
+        'star_radius': 0.1542*cons._sun_radius,  # Star radius [kilometer]
+        'star_temperature': 2992.,   # Star temperature [Kelvin]
         'target_longitude': 0.,     # Ecliptic longitude [degree]
-        'target_latitude': 0.,      # Ecliptic latitude  [degree]
+        'target_latitude': -62.67,      # Ecliptic latitude  [degree]
         'zodi_level': 3,        # scale parameter for exo-zodi [dimensionless]
     }
 }
@@ -36,8 +40,8 @@ obs_config = {
     'Spectrum':{
         'Type': 'Resolution',
         'R': 20,
-        'Low': 4.,
-        'High': 18.5,        # unit: micrometer
+        'Low': 0.9,
+        'High': 1.7,        # unit: micrometer
     },
     'Observation':{
         'ObsNumber': 1.,
@@ -49,7 +53,7 @@ obs_config = {
         },
         'Baseline':{
             'Type': 'Constant',
-            'Value': 30.,  # unit: meter
+            'Value': 10.,  # unit: meter
         },
     },
     'Configuration':{
@@ -58,7 +62,7 @@ obs_config = {
         'formation_longitude': 0.,  # Formation longitude [degree] 
         'formation_latitude' : 0.,  # Formation latitude [degree] 
         # Instrument parameters
-        'mirror_diameter': 3.5,   # Diameter of MiYin primary mirror [meter]
+        'mirror_diameter': 0.6,   # Diameter of MiYin primary mirror [meter]
         'quantum_eff': 0.7,     # Quantum efficiency of detector [dimensionless]
         'instrument_eff': 0.05, # Instrument throughput efficiency [dimensionless]
         'nulling_depth': 0.,    # Nulling depth of the instrument [dimensionless, within [0,1) ]
@@ -66,21 +70,39 @@ obs_config = {
 }
 
 amp_to_draw = {
-    'Proxima_b':{
+    'Proxima_b_em':{
         'Model': 'PlanetPolarCoordinates',
         #'Model': 'PlanetWithReflection',
         'Spectrum': 'BinnedBlackBody',
         'Parameters':
         {
-            'au':        {'mean': 1.},
-            'polar':     {'mean': 0.},
+            'au':        {'mean': 0.0485},
+            'polar':          {'mean': 0.},
         },
         'Spectrum': {
             'Model': 'RelativeBlackBodySpectrum',
             'Parameters':
             {
-                'r_radius':         {'mean': 1.},
-                'r_temperature':    {'mean': 1.},
+                'r_radius':         {'mean': 1.1},
+                'r_temperature':    {'mean': 0.821},
+            },
+        },
+    },
+    'Proxima_b':{
+        #'Model': 'PlanetPolarCoordinates',
+        'Model': 'PlanetWithReflection',
+        'Spectrum': 'BinnedBlackBody',
+        'Parameters':
+        {
+            'au':        {'mean': 0.0485},
+            'polar':          {'mean': 0.},
+        },
+        'Spectrum': {
+            'Model': 'RelativeBlackBodySpectrum',
+            'Parameters':
+            {
+                'r_radius':         {'mean': 1.1},
+                'r_temperature':    {'mean': 0.821},
             },
         },
     },
@@ -94,6 +116,8 @@ amp_to_draw = {
         "Model": 'ExoZodiacalDustMatrix',
     },
 }
+
+trans_type = {'UnifiedTransmission': '-', 'DualChoppedDestructive': ':'}
 
 obs_creator = ObservationCreator()
 obs_creator.load(obs_config)
@@ -109,12 +133,12 @@ def draw_line(ax, amp_name):
     color = next(cycol)
     ax.plot(data['wl_mid'].cpu().detach().numpy()*1e6, data_without_trans.cpu().detach().numpy(), linestyle='-', color=color, label=f"{amp_name}")
 
-    if amp_name != 'Proxima_b':
-        amp_config['TransmissionMap'] = 'DualChoppedDestructive'
+    if amp_name.find('Proxima_b') == -1:
+    #if amp_name != 'Proxima_b':
+        amp_config['TransmissionMap'] = 'SingleBracewell'
         amp_trans = AmplitudeCreator(config=amp_config)
         data_with_trans = amp_trans(data)
         ax.plot(data['wl_mid'].cpu().detach().numpy()*1e6, data_with_trans.cpu().detach().numpy(), linestyle=':', color=color)
-
 
 if __name__ == '__main__':
     fig, ax = plt.subplots()
@@ -122,7 +146,7 @@ if __name__ == '__main__':
     #draw_line(ax, 'Stellar_Leak')
     for key in amp_to_draw:
         draw_line(ax, key)
-    ax.legend()
     ax.set_xlabel('Wavelength [$\mu m$]')
     ax.set_ylabel('Signal [$\\rm{{pe \\cdot s^{{-1}}}}$]')
+    ax.legend()
     plt.show()

@@ -30,7 +30,6 @@ class FitResult():
                        }
         self.nll_model = None
         self.__auto_save = auto_save
-        print(output_path)
         if self.__auto_save:
             start_time = datetime.now()
             if output_path is None:
@@ -38,7 +37,7 @@ class FitResult():
             else:
                 self.__output_path = f"{output_path}/Job_{start_time.strftime('%Y%m%d_%H%M%S')}"
             if not os.path.exists(self.__output_path):
-                os.mkdir(self.__output_path)
+                os.makedirs(self.__output_path)
             print(f"The result will be saved to: {self.__output_path}")
 
     def load_fit_result(self, nll_model, scipy_result: optimize.OptimizeResult):
@@ -110,6 +109,8 @@ class FitResult():
         return self.__result[key]
 
     def save(self, name=None, save_type = 'hdf5'):
+        if self.__auto_save == False:
+            return
         save_name = f"result"
         if name is not None:
             save_name = f"{save_name}_{name}"
@@ -214,6 +215,8 @@ class FitResult():
             levels = np.arange(np.min(nll_array)*1.005, 10., np.fabs(np.max(nll_array)-np.min(nll_array))/100.)
             scat = ax.scatter(ra_array, dec_array, s=30, c=nll_array, cmap=plt.get_cmap("gist_rainbow"))
             fig.colorbar(scat,ax=ax,orientation='vertical',label='NLL')
+            ax.plot(ra_array[-1], dec_array[-1], 'r*', markersize=20, label='Min NLL')
+            ax.legend(fontsize='xx-large', loc='lower right', bbox_to_anchor=(1.1, -0.05))
             if not polar:
                 ax.set_xlabel(position_name[0])
                 ax.set_ylabel(position_name[1])

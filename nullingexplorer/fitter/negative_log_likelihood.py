@@ -20,7 +20,7 @@ class NegativeLogLikelihood(nn.Module, ABC):
         self.create_boundary()
         self.update_param_list()
 
-        print(self.__total_gaussian_constraints)
+        #print(self.__total_gaussian_constraints)
 
         #print("Initial Parameters:")
         #for name, param in self.__param_list.items():

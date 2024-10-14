@@ -21,7 +21,8 @@ class Configuration():
         'quantum_eff': 0.7,     # Quantum efficiency of detector [dimensionless]
         'instrument_eff': 0.05, # Instrument throughput efficiency [dimensionless]
         'nulling_depth': 0.,    # Nulling depth of the instrument [dimensionless, within [0,1) ]
-        'trans_map': 'DualChoppedDestructive' # Nulling transmission map [dimensionless]
+        'trans_map': 'DualChoppedDestructive', # Nulling transmission map [dimensionless]
+        'fov_scale': 1.         # Scale of FoV
     } # {key: torch.Tensor}
     for key, val in _data_property.items():
         if type(val) == str:

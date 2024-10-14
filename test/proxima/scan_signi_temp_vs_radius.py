@@ -26,7 +26,7 @@ obs_config = {
     },
     'Observation':{
         'ObsNumber': 360,
-        'IntegrationTime': 200,  # unit: second
+        'IntegrationTime': 1.,  # unit: second
         'ObsMode': [1],  # [1] or [-1] or [1, -1]
         'Phase':{
             'Start' : 0.,
@@ -35,9 +35,6 @@ obs_config = {
         'Baseline':{
             'Type': 'Constant',
             'Value': 10.,  # unit: meter
-            #'Type': 'Linear',
-            #'Low': 10.,  # unit: meter
-            #'High': 50.,  # unit: meter
         },
     },
     'Configuration':{
@@ -76,7 +73,7 @@ sig_amp_config = {
     'Instrument': 'MiYinBasicType',
     'TransmissionMap': 'SingleBracewell',
     'Configuration':{
-        'distance': 4.2 * cons._light_speed / cons._pc_to_meter,         # distance between Miyin and target [pc]
+        'distance': 4.2 * cons._light_year_to_meter / cons._pc_to_meter,         # distance between Miyin and target [pc]
         'star_radius': 0.1542*cons._sun_radius,  # Star radius [kilometer]
         'star_temperature': 2992.,   # Star temperature [Kelvin]
         'target_longitude': 0.,     # Ecliptic longitude [degree]
@@ -100,7 +97,7 @@ bkg_amp_config = {
     'Instrument': 'MiYinBasicType',
     'TransmissionMap': 'SingleBracewell',
     'Configuration':{
-        'distance': 4.2 * cons._light_speed / cons._pc_to_meter,         # distance between Miyin and target [pc]
+        'distance': 4.2 * cons._light_year_to_meter / cons._pc_to_meter,         # distance between Miyin and target [pc]
         'star_radius': 0.1542*cons._sun_radius,  # Star radius [kilometer]
         'star_temperature': 2992.,   # Star temperature [Kelvin]
         'target_longitude': 0.,     # Ecliptic longitude [degree]
@@ -131,22 +128,23 @@ def sig_point(temp, radius):
     sig_amp_config['Amplitude']['earth']['Spectrum']['Parameters']['r_temperature']['mean'] = temp / 285.
     sig_amp_config['Amplitude']['earth']['Spectrum']['Parameters']['r_radius']['mean'] = radius / 6371.
     sig_poisson.sig_amp_config = sig_amp_config
-    sig_pe = sig_poisson.gen_sig_pe()
-    return sig_poisson.get_significance(sig_pe, bkg_pe)
+    sig_pe = sig_poisson.gen_sig_pe_single()
+    return sig_poisson.get_significance_single(sig_pe, bkg_pe)
 
-significance = np.zeros(len(temperature_array))
+significance = np.zeros(len(temperature_array), dtype=np.float64)
 
 for i, temp, radius in tqdm(zip(range(len(temperature_array)), temperature_array, radius_array), total=len(temperature_array)):
     significance[i] = sig_point(temp, radius)
 
+print(significance)
 fig, ax = plt.subplots()
 #levels = np.logspace(np.log10(np.min(significance)*0.99), np.log10(1.01*np.max(significance)), 1000)
 levels = np.geomspace(0.001, 1.01*np.max(significance), 1000)
-locator = ticker.LogLocator(base=10.0)
+#locator = ticker.LogLocator(base=10.0)
 significance = significance.reshape(scan_num, scan_num)
-trans_map_cont = ax.contourf(TEMP, RADI, significance, levels=levels, locator=locator, cmap = plt.get_cmap("gist_rainbow"))
+#trans_map_cont = ax.contourf(TEMP, RADI, significance, levels=levels, locator=locator, cmap = plt.get_cmap("gist_rainbow"))
 #trans_map_cont = ax.contourf(TEMP, RADI, significance, cmap = plt.get_cmap("gist_rainbow"), norm='log')
-#trans_map_cont = ax.contourf(TEMP, RADI, significance, levels=levels, cmap = plt.get_cmap("gist_rainbow"), norm='log')
+trans_map_cont = ax.contourf(TEMP, RADI, significance, levels=levels, cmap = plt.get_cmap("gist_rainbow"), norm='log')
 trans_7_sigma = ax.contour(TEMP, RADI, significance, levels=[7], colors='white', linewidths=2)  # , label="7$\,\sigma$"
 plt.clabel(trans_7_sigma, inline=True, fontsize=35, fmt='7$\,\\rm{{\sigma}}$')
 #trans_map_cont = ax.contourf(TEMP, RADI, significance.reshape(scan_num, scan_num), levels=levels, cmap = plt.get_cmap("bwr"), norm='log')
@@ -156,25 +154,25 @@ ax.set_ylabel("Radius / km")
 
 cbar = fig.colorbar(trans_map_cont, format="%.2f")
 
-# Mark planets
-planets = {
-    'Earth': [285., 6371., 'P'],
-    'Mars':  [210., 3389., 'o'],
-    'Venus': [737., 6051., 'v'],
-}
-
-signi = []
-for val in planets.values():
-    signi.append(sig_point(val[0], val[1]))
-    #signi.append(interpn(points=(temperature_line, radius_line), values=significance.reshape(scan_num, scan_num), xi=np.array([val[0], val[1]])))
-
-print(signi)
-
-for i, name, val in zip(range(len(planets)), planets.keys(), planets.values()):
-    ax.scatter(val[0], val[1], s=200, marker=val[2], color='black', label=name)
-    plt.annotate(text=f"{signi[i]:.2f}$\,\\rm{{\sigma}}$", xy=(val[0], val[1]), xytext=(val[0]-45, val[1]+150), fontsize=25, color='black')
-
-ax.legend(fontsize=30, loc='lower right')
+## Mark planets
+#planets = {
+#    'Earth': [285., 6371., 'P'],
+#    'Mars':  [210., 3389., 'o'],
+#    'Venus': [737., 6051., 'v'],
+#}
+#
+#signi = []
+#for val in planets.values():
+#    signi.append(sig_point(val[0], val[1]))
+#    #signi.append(interpn(points=(temperature_line, radius_line), values=significance.reshape(scan_num, scan_num), xi=np.array([val[0], val[1]])))
+#
+#print(signi)
+#
+#for i, name, val in zip(range(len(planets)), planets.keys(), planets.values()):
+#    ax.scatter(val[0], val[1], s=200, marker=val[2], color='black', label=name)
+#    plt.annotate(text=f"{signi[i]:.2f}$\,\\rm{{\sigma}}$", xy=(val[0], val[1]), xytext=(val[0]-45, val[1]+150), fontsize=25, color='black')
+#
+#ax.legend(fontsize=30, loc='lower right')
 
 plt.show()
 

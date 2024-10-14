@@ -1,16 +1,16 @@
 import sys
-sys.path.append('..')
+sys.path.append('../..')
 import torch
 import torch.nn as nn
 import numpy as np
 import matplotlib.pyplot as plt
 from nullingexplorer.utils import Constants as cons
 from nullingexplorer.utils import Configuration as cfg
-from nullingexplorer.instrument import MiYinBasicType
+from nullingexplorer.model.instrument import MiYinBasicType
 
-cfg.set_property('mirror_diameter', 2.)
+cfg.set_property('mirror_diameter', 0.6)
 #sigmod = nn.Sigmoid()
-wavelength = torch.tensor(5e-6)
+wavelength = torch.tensor(1e-6)
 
 instrument = MiYinBasicType()
 

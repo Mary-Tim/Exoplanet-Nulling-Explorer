@@ -61,7 +61,7 @@ class ChiSquareSignificance():
             start_time = datetime.now()
             self.__output_path = f"results/Signi_{start_time.strftime('%Y%m%d_%H%M%S')}"
             if not os.path.exists(self.__output_path):
-                os.mkdir(self.__output_path)
+                os.makedirs(self.__output_path)
 
         sig_nll_array = np.zeros(number_of_toy_mc)
         bkg_nll_array = np.zeros(number_of_toy_mc)

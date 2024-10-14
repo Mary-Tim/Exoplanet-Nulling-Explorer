@@ -29,7 +29,7 @@ class ToyMonteCarlo():
         else:
             self.__path = f"{path}_{start_time.strftime('%Y%m%d_%H%M%S')}"
         if not os.path.exists(self.__path):
-            os.mkdir(self.__path)
+            os.makedirs(self.__path)
         print(f"Save the result to: {self.__path}")
 
     def do_a_toy(self, gen_amp_config, fit_amp_config, obs_config, random_fit_number=50, save_toy_result=False, *args, **kwargs):

@@ -21,7 +21,7 @@ obs_config = {
         'Type': 'Resolution',
         'R': 20,
         'Low': 5.,
-        'High': 17.,        # unit: micrometer
+        'High': 18.,        # unit: micrometer
     },
     'Observation':{
         'ObsNumber': 1,
@@ -50,13 +50,25 @@ obs_config = {
 }
 
 interp_num = 12
-hdf5_path = '../results/Job_20240913_093058/result_earth.hdf5'
+#hdf5_path = '../results/Job_20240913_093058/result_earth.hdf5'
+#hdf5_path = '../results/Job_20240919_151437/result_earth.hdf5'
+#hdf5_path = '../results/Job_20240920_110708/result_earth.hdf5'
+#hdf5_path = '../results/Job_20240923_155449/result_earth.hdf5'
+#hdf5_path = '../results/Job_20240923_163300/result_earth.hdf5'
+hdf5_path = '../results/Job_20240923_165130/result_earth.hdf5'
+
+# Linear
+#hdf5_path = '../results/Job_20240920_104025/result_earth.hdf5'
 
 result = FitResult.load(hdf5_path)
 
 obs_creator = ObservationCreator()
 black_body = RelativeBlackBodySpectrum()
-cspline = CubicSplineInterpolation(wl_min=5, wl_max=17, num_points=interp_num)
+#cspline = LinearInterpolation(wl_min=5, wl_max=17, num_points=interp_num)
+cspline = CubicSplineIntegral(wl_min=5.5, wl_max=16.5, num_points=interp_num)
+#cspline = CubicSplineInterpolation(wl_min=5, wl_max=17, num_points=interp_num)
+
+tempurature = torch.tensor(273.)
 
 flux_point = np.zeros(interp_num)
 flux_err = np.zeros(interp_num)
@@ -76,14 +88,18 @@ cspline.flux.data = torch.tensor(flux_point)
 
 obs_creator.load(obs_config)
 data = obs_creator.generate()
+obs_config['Spectrum']['R'] = 1000
+interp_data = obs_creator.generate()
 
 print(cspline.interp_points.cpu().detach().numpy())
 print(flux_point)
 
 fig, ax = plt.subplots()
 ax.plot(data['wl_mid'].cpu().detach().numpy(), black_body(data).cpu().detach().numpy(), color='black', label='data')
-ax.plot(data['wl_mid'].cpu().detach().numpy(), cspline(data).cpu().detach().numpy(), color='green', label='cubic-spline')
+ax.plot(interp_data['wl_mid'].cpu().detach().numpy(), cspline(interp_data).cpu().detach().numpy(), color='green', label='cubic-spline')
 ax.errorbar(cspline.interp_points.cpu().detach().numpy(), flux_point, yerr=flux_err, fmt='ok', markersize=10, capsize=5, label='interpolation points')
+
+print(len(data))
 
 plt.legend()
 plt.show()

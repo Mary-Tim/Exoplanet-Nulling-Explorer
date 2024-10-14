@@ -9,6 +9,7 @@ class Constants(object):
     _radian_to_mas = 180. / np.pi * 3600. * 1e3 # Uit concersion, from radian to mac (unit: radian)
     _radian_to_degree = 180. / np.pi            # Uit concersion, from radian to degree (unit: radian)
     _au_to_meter = 149597870700.                # Uit concersion, from AU to meter (unit: AU)
+    _light_year_to_meter = 9.4605284e15         # Uit concersion, from light year to meter (unit: light year)
 
     _sun_radius = 695500.                       # Radius of the sun (unit: kilometer)
     _earth_radius = 6371.e3                     # Radius of the earth (unit: meter)  

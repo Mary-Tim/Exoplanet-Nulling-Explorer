@@ -1,0 +1,10 @@
+torch>=2.0.0
+numpy
+pyyaml
+tensordict>=0.5.0
+h5py
+matplotlib
+iminuit>=2.18.0
+torchquad
+uproot>=5.1.2
+tqdm
