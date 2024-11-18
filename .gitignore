@@ -49,6 +49,9 @@ test/results/
 # build 
 /build/*
 
+# test
+/test/*
+
 #vscode
 /.vscode
 /.vscode/*
