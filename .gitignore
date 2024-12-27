@@ -43,13 +43,12 @@
 *.h5
 *.pdf
 */*Job_*/
-test/fig/
-test/results/
 
 # build 
 /build/*
 
 # test
+*.bak
 /test/*
 
 #vscode
@@ -58,6 +57,3 @@ test/results/
 
 #pycache
 *__pycache__*
-
-# test file
-restats
