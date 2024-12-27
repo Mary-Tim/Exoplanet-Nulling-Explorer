@@ -5,8 +5,8 @@ from nullingexplorer.model.transmission import BaseTransmission
 from nullingexplorer.utils import Configuration as cfg
 
 class UnifiedTransmission(BaseTransmission):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.register_buffer('scale', torch.tensor(1.))
 
     def forward(self, ra, dec, wavelength, data):

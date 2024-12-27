@@ -43,6 +43,7 @@
 *.h5
 *.pdf
 */*Job_*/
+*/.ipynb_checkpoints/
 
 # build 
 /build/*
@@ -51,9 +52,9 @@
 *.bak
 /test/*
 
-#vscode
+# vscode
 /.vscode
 /.vscode/*
 
-#pycache
+# pycache
 *__pycache__*

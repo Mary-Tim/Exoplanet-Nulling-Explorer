@@ -8,8 +8,9 @@ class BaseTransmission(ModuleRegister, cls_type='Transmission', cls_name='base')
     def __init_subclass__(cls, cls_name=None):
         return super().__init_subclass__(cls_type='Transmission', cls_name=cls_name)
 
-    def __init__(self):
+    def __init__(self, is_planet=False):
         super(BaseTransmission, self).__init__()
+        self.is_planet = is_planet
 
     def forward(self, x):
         pass

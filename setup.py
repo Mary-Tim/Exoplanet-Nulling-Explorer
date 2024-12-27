@@ -19,6 +19,7 @@ setup(
         'torchquad',
         'uproot',
         'tqdm',
+        'spectres',
     ],
     classifiers=[
         'Development Status :: 3 - Alpha',

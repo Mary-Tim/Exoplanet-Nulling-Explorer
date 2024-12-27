@@ -3,12 +3,12 @@ import torch.nn as nn
 
 from nullingexplorer.utils import ModuleRegister
 
-class BaseSpectrum(ModuleRegister, cls_type='Spectrum', cls_name='base'):
+class BaseOrbit(ModuleRegister, cls_type='Orbit', cls_name='base'):
     def __init_subclass__(cls, cls_name=None):
-        return super().__init_subclass__(cls_type='Spectrum', cls_name=cls_name)
+        return super().__init_subclass__(cls_type='Orbit', cls_name=cls_name)
 
     def __init__(self, *args, **kwargs):
-        super(BaseSpectrum, self).__init__()
+        super(BaseOrbit, self).__init__()
 
     def forward(self, x):
         pass

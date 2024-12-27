@@ -5,7 +5,7 @@ import numpy as np
 
 from tensordict import TensorDict
 from nullingexplorer.model.amplitude import BaseAmplitude
-from nullingexplorer.utils import get_amplitude, get_instrument, get_spectrum, get_transmission, get_electronics
+from nullingexplorer.utils import get_amplitude, get_instrument, get_spectrum, get_transmission, get_electronics, get_orbit
 from nullingexplorer.utils import Configuration as cfg
 
 class AmplitudeCreator(nn.Module):
@@ -74,9 +74,11 @@ class AmplitudeCreator(nn.Module):
         self.__setattr__(name, get_amplitude(config['Model'])())
         amp = self.__getattr__(name)
         del amp.trans_map
-        amp.trans_map = trans_class()
+        amp.trans_map = trans_class(is_planet=amp.is_planet)
         if 'Spectrum' in config.keys():
             amp.spectrum = self.spectrum_register(config['Spectrum'])
+        if 'Orbit' in config.keys():
+            amp.orbit = self.orbit_register(config['Orbit'])
         if 'Parameters' in config.keys():
             self.parameters_setting(amp, config=config['Parameters'])
         else:
@@ -110,6 +112,24 @@ class AmplitudeCreator(nn.Module):
         #        spectrum.initialize()
 
         return spectrum
+
+    def orbit_register(self, config):
+        if isinstance(config, str):
+            orbit = get_orbit(config)()
+            return orbit
+
+        if 'Initialize' in config.keys():
+            orbit = get_orbit(config['Model'])(**config['Initialize'])
+        else:
+            orbit = get_orbit(config['Model'])()
+        if 'Parameters' in config.keys():
+            self.parameters_setting(orbit, config['Parameters'])
+        else:
+            self.parameters_setting(orbit)
+        if 'Buffers' in config.keys():
+            self.buffer_setting(orbit, config=config['Buffers'])
+
+        return orbit
 
     def buffer_setting(self, model: nn.Module, config: dict):
         for key, val in config.items():

@@ -30,18 +30,32 @@ class Configuration():
         elif type(val) != torch.Tensor:
             _data_property[key] = torch.tensor(float(val))
 
+    #@classmethod
+    #def set_property(cls, key: str, val):
+    #    if isinstance(val, (float, list, np.ndarray, np.floating)):
+    #        cls._data_property[key] = torch.tensor(val)
+    #    elif isinstance(val, torch.Tensor):
+    #        cls._data_property[key] = val
+    #    elif isinstance(val, int):
+    #        cls._data_property[key] = torch.tensor(float(val))
+    #    elif isinstance(val, str):
+    #        cls._data_property[key] = val
+    #    else:
+    #        raise TypeError(f"Configure: Type {type(val)} is not an available type of data property!")
     @classmethod
     def set_property(cls, key: str, val):
-        if isinstance(val, (float, list, np.ndarray, np.floating)):
-            cls._data_property[key] = torch.tensor(val)
-        elif isinstance(val, torch.Tensor):
-            cls._data_property[key] = val
-        elif isinstance(val, int):
-            cls._data_property[key] = torch.tensor(float(val))
-        elif isinstance(val, str):
-            cls._data_property[key] = val
-        else:
-            raise TypeError(f"Configure: Type {type(val)} is not an available type of data property!")
+        try:
+            if isinstance(val, (float, list, np.ndarray, np.floating)):
+                cls._data_property[key] = torch.tensor(val)
+            elif isinstance(val, (torch.Tensor, str)):
+                cls._data_property[key] = val
+            elif isinstance(val, int):
+                cls._data_property[key] = torch.tensor(float(val))
+            else:
+                raise TypeError(f"Configure: Type {type(val)} is not an available type of data property!")
+        except Exception as e:
+            print(f"Error setting property {key}: {e}")
+            raise
 
     @classmethod
     def get_property(cls, key: str) -> torch.Tensor:

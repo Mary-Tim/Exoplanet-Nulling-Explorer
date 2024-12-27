@@ -1,6 +1,7 @@
 import torch
 import yaml
 import numpy as np
+from datetime import datetime
 
 from tensordict import TensorDict
 from nullingexplorer.utils import Configuration as cfg
@@ -10,6 +11,7 @@ class ObservationCreator():
         self.__config = None
         self.__spec_gen = SpectrumGenerator()
         self.__obs_gen = ObsGenerator()
+        self.__tf_gen = TimeFlagGenerator()
         self.obs_num = None
         self.spec_num = None
         self.mod_num = None
@@ -24,27 +26,32 @@ class ObservationCreator():
 
         An example of config:
         {
-        'Spectrum':
+            'Spectrum':
             {
-            'Type': 'Equal',
-            'BinNumber': 100,
-            'Low': 5.,
-            'High': 25.,        # unit: micrometer
+                'Type': 'Equal',
+                'BinNumber': 100,
+                'Low': 5.,
+                'High': 25.,                # unit: micrometer
             },
-        'Observation':
+            'Observation':
             {
-            'ObsNumber': 360,
-            'IntegrationTime': 300,  # unit: second
-            'ObsMode': [1, -1]  # For chopped nulling
-            'Phase'
+                'ObsNumber': 360,
+                'IntegrationTime': 300,     # unit: second
+                'ObsMode': [1, -1]          # For chopped nulling
+                'Phase'
                 {
-                'Start' : 0.,
-                'Stop': 360.,   # unit: degree
+                    'Start' : 0.,
+                    'Stop': 360.,           # unit: degree
                 },
-            'Baseline':
+                'Baseline':
                 {
-                'Type': 'Constant',
-                'Value': 100.,  # unit: meter
+                    'Type': 'Constant',
+                    'Value': 100.,          # unit: meter
+                },
+                'TimeFlag':
+                {
+                    'StartEpoch': '2023-01-01 00:00:00',
+                    'ControlTime': 1000,    # unit: second
                 },
             },
         }
@@ -66,12 +73,15 @@ class ObservationCreator():
 
         obs_num = self.__obs_gen.call_observation(self.__config['Observation'])
         spec_num = self.__spec_gen.call_spectrum(self.__config['Spectrum'])
+        #tf_num = self.__tf_gen.call_timeflag(self.__config['TimeFlag'], self.__obs_gen)
+        start_time = self.__tf_gen.call_timeflag(self.__config.get('TimeFlag'), self.__obs_gen)
         mod_num = len(self.__obs_gen.mod)
         batch_size = obs_num*spec_num*mod_num
 
         data = TensorDict({
             'phase': torch.tensor(np.repeat(self.__obs_gen.phase, spec_num*mod_num)).flatten(),
             'baseline': torch.tensor(np.repeat(self.__obs_gen.baseline, spec_num*mod_num)).flatten(),
+            'start_time': torch.repeat_interleave(start_time, repeats=spec_num*mod_num),
             'intg_time': torch.ones(batch_size)*self.__obs_gen.intg_time,
             'wl_lo': torch.tensor(np.array([np.repeat(self.__spec_gen.wl_lo, mod_num)]*obs_num)).flatten(),
             'wl_hi': torch.tensor(np.array([np.repeat(self.__spec_gen.wl_hi, mod_num)]*obs_num)).flatten(),
@@ -142,8 +152,6 @@ class SpectrumGenerator():
 
         self.wl_lo = self.wl_lo[:self.spec_num]
         self.wl_hi = self.wl_hi[:self.spec_num]
-
-
         
 class ObsGenerator():
     def __init__(self) -> None:
@@ -182,3 +190,20 @@ class ObsGenerator():
 
     def exp(self, low, high, num):
         return (np.exp(np.linspace(0, np.log(2), num))-1.) * (high-low) + low
+
+class TimeFlagGenerator():
+    def __init__(self) -> None:
+        self.start_time = None
+
+    def call_timeflag(self, config=None, obs_gen:ObsGenerator=None):
+        integral_time = obs_gen.intg_time
+        observe_number = obs_gen.obs_num
+        if config is None:
+            self.start_time = torch.zeros(observe_number)
+        else:
+            start_epoch_str = config['StartEpoch']
+            control_time = config['ControlTime']
+            self.start_epoch = datetime.strptime(start_epoch_str, '%Y-%m-%d %H:%M:%S').timestamp()
+            self.start_time = self.start_epoch + torch.arange(observe_number) * (integral_time + control_time)
+        
+        return self.start_time

@@ -60,6 +60,7 @@ class ENEFitter():
             init_val = np.random.uniform(low=boundary_lo, high=boundary_hi)
         result = basinhopping(NLL.objective, 
                     x0=init_val, 
+                    #minimizer_kwargs={'method': min_method, 'bounds': boundary, 'jac': False, 
                     minimizer_kwargs={'method': min_method, 'bounds': boundary, 'jac': True, 
                                         'options': {'maxcor': 100, 'ftol': 1e-10, 'maxiter': 10000, 'maxls': maxls}}, 
                     T=2.5,
@@ -84,7 +85,17 @@ class ENEFitter():
             retry_times = 0
             # Continue attempting until a successful minimization result is found
             while(not flag):                                  
-                this_result = ENEFitter.scipy_basinhopping(NLL=NLL, min_method=self.min_method, *args, **kwargs)
+                try:
+                    this_result = ENEFitter.scipy_basinhopping(NLL=NLL, min_method=self.min_method, *args, **kwargs)
+                except ValueError:
+                    print(f"Detect ValueError during fitting! Current param values: {self.NLL.get_param_values()}")
+                    continue
+                except RuntimeError:
+                    print(f"Detect RuntimeError during fitting! Current param values: {self.NLL.get_param_values()}")
+                    continue
+
+                #this_result = ENEFitter.scipy_basinhopping(NLL=NLL, min_method=self.min_method, *args, **kwargs)
+
                 flag = this_result.success
                 if flag == False:
                     retry_times += 1
@@ -276,8 +287,9 @@ class ENEFitter():
 
         result = self.precision_search(fit_params=planet_params, init_val=list(result.x), 
                                        stepsize=0.1, niter=10000, niter_success=500, *args, **kwargs)
-        for i, name in enumerate(planet_params):
-            self.NLL.set_param_val(name, result.x[i])
+        #for i, name in enumerate(planet_params):
+        #    self.NLL.set_param_val(name, result.x[i])
+        self.NLL.update_vals(result.x)
         self.fit_result.load_fit_result(self.NLL, result)
         if std_err == True:
             self.fit_result.evaluate_std_error()

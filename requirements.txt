@@ -8,3 +8,4 @@ iminuit>=2.18.0
 torchquad
 uproot>=5.1.2
 tqdm
+spectres

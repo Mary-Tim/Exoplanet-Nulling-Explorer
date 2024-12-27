@@ -21,7 +21,8 @@ class ClassContainer(object):
             "Instrument"        : {}, 
             "Spectrum"          : {},
             "Transmission"      : {},
-            "Electronics"       : {}
+            "Electronics"       : {},
+            "Orbit"             : {},
         }
     def __new__(cls, *args, **kwds):
         if cls._instance is None:
@@ -69,7 +70,7 @@ class ClassContainer(object):
     def print_available_class(cls):
         print('All available modules:')
         for type_name, atype in cls._class_list.items():
-            print(f"Module {type_name}:\t{list(atype.keys())}")
+            print(f"Module {type_name}:\t{list(atype.keys())[1:]}")
 
 def register_class(cls_type = None, cls_name = None):
     def decorator(cls):
@@ -94,6 +95,9 @@ def get_transmission(cls_name = None):
 
 def get_electronics(cls_name = None):
     return ClassContainer.get_class('Electronics', cls_name)
+
+def get_orbit(cls_name = None):
+    return ClassContainer.get_class('Orbit', cls_name)
 
 # test
 def main():

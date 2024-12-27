@@ -9,6 +9,12 @@ class BaseAmplitude(ModuleRegister, cls_type='Amplitude', cls_name='base'):
 
     def __init__(self):
         super(BaseAmplitude, self).__init__()
+        self.is_planet = False
 
     def forward(self, x):
         pass
+
+class BasePlanet(BaseAmplitude):
+    def __init__(self):
+        super(BasePlanet, self).__init__()
+        self.is_planet = True

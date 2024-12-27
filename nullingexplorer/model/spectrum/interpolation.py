@@ -90,17 +90,25 @@ class LinearInterpolation(BaseInterpolation):
         
         # 处理左侧外推
         left_mask = data['wl_hi'] <= self.interp_points[0]
-        left_slope = (self.flux[1] - self.flux[0]) / (self.interp_points[1] - self.interp_points[0])
-        left_flux = self.flux[0] + left_slope * (data['wl_mid'] - self.interp_points[0])
-        total_flux += left_mask * left_flux
+        # 零阶外推
+        total_flux += left_mask * self.flux[0]
         total_weight += left_mask
+        # 一阶外推
+        #left_slope = (self.flux[1] - self.flux[0]) / (self.interp_points[1] - self.interp_points[0])
+        #left_flux = self.flux[0] + left_slope * (data['wl_mid'] - self.interp_points[0])
+        #total_flux += left_mask * left_flux
+        #total_weight += left_mask
         
         # 处理右侧外推
         right_mask = data['wl_lo'] >= self.interp_points[-1]
-        right_slope = (self.flux[-1] - self.flux[-2]) / (self.interp_points[-1] - self.interp_points[-2])
-        right_flux = self.flux[-1] + right_slope * (data['wl_mid'] - self.interp_points[-1])
-        total_flux += right_mask * right_flux
+        # 零阶外推
+        total_flux += right_mask * self.flux[-1]
         total_weight += right_mask
+        # 一阶外推
+        #right_slope = (self.flux[-1] - self.flux[-2]) / (self.interp_points[-1] - self.interp_points[-2])
+        #right_flux = self.flux[-1] + right_slope * (data['wl_mid'] - self.interp_points[-1])
+        #total_flux += right_mask * right_flux
+        #total_weight += right_mask
         
         ## 处理插值范围内的部分
         #for i in range(self.num_points - 1):
@@ -220,20 +228,6 @@ class CubicSplineInterpolation(BaseInterpolation):
         
         y_new = a[idx] + b[idx] * x_rel + c[idx] * x_rel**2 + d[idx] * x_rel**3
 
-        ## 处理外推情况
-        #left_mask = x_new < self.interp_points[0]
-        #right_mask = x_new > self.interp_points[-1]
-        
-        #if left_mask.any():
-        #    left_slope = (self.flux[1] - self.flux[0]) / (self.interp_points[1] - self.interp_points[0])
-        #    left_flux = self.flux[0] + left_slope * (x_new - self.interp_points[0])
-        #    y_new[left_mask] = left_flux[left_mask]
-        
-        #if right_mask.any():
-        #    right_slope = (self.flux[-1] - self.flux[-2]) / (self.interp_points[-1] - self.interp_points[-2])
-        #    right_flux = self.flux[-1] + right_slope * (x_new - self.interp_points[-1])
-        #    y_new[right_mask] = right_flux[right_mask]
-        
         return y_new
 
     def forward(self, data: TensorDict):
@@ -272,15 +266,50 @@ class CubicSplineIntegral(CubicSplineInterpolation):
         left_mask = x_end < self.interp_points[0]
         right_mask = x_start > self.interp_points[-1]
 
+        ## 零阶外推
+        #if left_mask.any():
+        #    #left_slope = (self.flux[1] - self.flux[0]) / (self.interp_points[1] - self.interp_points[0])
+        #    left_integrals = self.flux[0] * (x_end - x_start)
+        #    total_integrals[left_mask] = left_integrals[left_mask]
+
+        #if right_mask.any():
+        #    #right_slope = (self.flux[-1] - self.flux[-2]) / (self.interp_points[-1] - self.interp_points[-2])
+        #    right_integrals = self.flux[-1] * (x_end - x_start)
+        #    total_integrals[right_mask] = right_integrals[right_mask]
+
+        ## 一阶外推
+        #if left_mask.any():
+        #    left_slope = (self.flux[1] - self.flux[0]) / (self.interp_points[1] - self.interp_points[0])
+        #    left_flux = self.flux[0] + left_slope * (x_end - self.interp_points[0])
+        #    left_integrals = left_flux * (x_end - x_start)
+        #    total_integrals[left_mask] = left_integrals[left_mask]
+
+        #if right_mask.any():
+        #    right_slope = (self.flux[-1] - self.flux[-2]) / (self.interp_points[-1] - self.interp_points[-2])
+        #    right_flux = self.flux[-1] + right_slope * (x_start - self.interp_points[-1])
+        #    right_integrals = right_flux * (x_end - x_start)
+        #    total_integrals[right_mask] = right_integrals[right_mask]
+
+        # 二阶外推
         if left_mask.any():
-            left_slope = (self.flux[1] - self.flux[0]) / (self.interp_points[1] - self.interp_points[0])
-            left_flux = self.flux[0] + left_slope * (x_end - self.interp_points[0])
+            # 计算左端点的二阶外推系数
+            left_slope1 = (self.flux[1] - self.flux[0]) / (self.interp_points[1] - self.interp_points[0])
+            left_slope2 = (self.flux[2] - self.flux[1]) / (self.interp_points[2] - self.interp_points[1])
+            left_curvature = (left_slope2 - left_slope1) / (self.interp_points[2] - self.interp_points[0])
+
+            # 使用二次多项式进行外推
+            left_flux = self.flux[0] + left_slope1 * (x_end - self.interp_points[0]) + 0.5 * left_curvature * (x_end - self.interp_points[0])**2
             left_integrals = left_flux * (x_end - x_start)
             total_integrals[left_mask] = left_integrals[left_mask]
 
         if right_mask.any():
-            right_slope = (self.flux[-1] - self.flux[-2]) / (self.interp_points[-1] - self.interp_points[-2])
-            right_flux = self.flux[-1] + right_slope * (x_start - self.interp_points[-1])
+            # 计算右端点的二阶外推系数
+            right_slope1 = (self.flux[-1] - self.flux[-2]) / (self.interp_points[-1] - self.interp_points[-2])
+            right_slope2 = (self.flux[-2] - self.flux[-3]) / (self.interp_points[-2] - self.interp_points[-3])
+            right_curvature = (right_slope1 - right_slope2) / (self.interp_points[-1] - self.interp_points[-3])
+
+            # 使用二次多项式进行外推
+            right_flux = self.flux[-1] + right_slope1 * (x_start - self.interp_points[-1]) + 0.5 * right_curvature * (x_start - self.interp_points[-1])**2
             right_integrals = right_flux * (x_end - x_start)
             total_integrals[right_mask] = right_integrals[right_mask]
 
@@ -290,4 +319,5 @@ class CubicSplineIntegral(CubicSplineInterpolation):
     def forward(self, data: TensorDict):
         integrals = self._integrate_spline(data['wl_lo'], data['wl_hi'])
         widths = data['wl_hi'] - data['wl_lo']
+        #print(f"forward: {(integrals / widths).cpu().detach().numpy().tolist()}")
         return integrals / widths

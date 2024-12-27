@@ -72,8 +72,6 @@ class NegativeLogLikelihood(nn.Module, ABC):
         if self._gaussian_constraints == {}:
             del self._gaussian_constraints
 
-    #def get_boundaries(self):
-    #    return [tuple(val.cpu().detach().numpy()) for val in self.__boundary.values()]
     def get_boundaries(self):
         boundaries = []
         for param_name, boundary in self.__boundary.items():
@@ -133,7 +131,7 @@ class NegativeLogLikelihood(nn.Module, ABC):
         self.update_param_list()
 
     def free_all_params(self):
-        for name, param in self.named_parameters():
+        for _, param in self.named_parameters():
             param.requires_grad = True
         self.update_param_list()
 
@@ -176,6 +174,11 @@ class NegativeLogLikelihood(nn.Module, ABC):
 
     @abstractmethod
     def call_nll(self):
+        # If amp values contain NaN or inf, raise a ValueError exception
+        self.amp_val = self.amp(self.dataset)
+        if torch.isnan(self.amp_val).any() or torch.isinf(self.amp_val).any():
+            raise ValueError("Amp_val contains nan or inf values. Cannot computes the gradient of current amplitude.")
+
         nll = torch.tensor(0., requires_grad=True)
         gaussian_terms = []
         if hasattr(self, '_gaussian_constraints'):
@@ -203,10 +206,7 @@ class NegativeLogLikelihood(nn.Module, ABC):
         grad = torch.stack(atg.grad(NLL, self.__free_param_list.values()), dim=0)
         return grad.cpu().detach().numpy()
 
-    def objective(self, params):
-        if self.dataset is None:
-            raise ValueError('Dataset should be initialized before calling the NLL!')
-
+    def update_vals(self, params):
         param_index = 0
         for par in self.__free_param_list.values():
             if par.numel() == 1:  # Scalar parameters
@@ -217,12 +217,24 @@ class NegativeLogLikelihood(nn.Module, ABC):
                 par.data = torch.tensor(params[param_index:param_index+num_elements], dtype=par.dtype).reshape(par.shape)
                 param_index += num_elements
 
-        NLL = self.call_nll()
+    def objective(self, params):
+        if self.dataset is None:
+            raise ValueError('Dataset should be initialized before calling the NLL!')
 
-        grads = atg.grad(NLL, self.__free_param_list.values(), create_graph=True)
-        grad_flat = torch.cat([g.flatten() for g in grads])
+        self.update_vals(params)
+
+        # Clear previous gradients
+        self.amp.zero_grad(set_to_none=True)
+
+        # Compute gradients
+        NLL = self.call_nll()
+        NLL.backward(retain_graph=True)
+        grad_flat = torch.cat([par.grad.flatten() for par in self.__free_param_list.values()])
+        #grads = atg.grad(NLL, self.__free_param_list.values(), retain_graph=True)
+        #grad_flat = torch.cat([g.flatten() for g in grads])
 
         return NLL.cpu().detach().numpy(), grad_flat.cpu().detach().numpy()
+        #return NLL.cpu().detach().numpy()
 
     def func_call(self, *args):
         if len(args) != len(self.__free_param_list.keys()):
@@ -235,23 +247,8 @@ class NegativeLogLikelihood(nn.Module, ABC):
                 sub_model = getattr(sub_model, ip)
             delattr(sub_model, path[-1])
             setattr(sub_model, path[-1], val)
-        #for par, val in zip(self.parameters(), args):
-        #for par, val in zip(self.__free_param_list.values(), args):
-        #    par.data.fill_(val.data.item())
+        
         return self.call_nll()
-    #def func_call(self, *args):
-    #    #flat_params = torch.cat([arg.flatten() for arg in args])
-    #    flat_params = torch.cat([arg.flatten() if isinstance(arg, torch.Tensor) else torch.tensor([arg]).flatten() for arg in args])
-    #    if flat_params.numel() != sum(p.numel() for p in self.__free_param_list.values()):
-    #        raise ValueError("Parameter count mismatch. Ensure the number of parameters matches the number of values in the free parameter list.")
-
-    #    nn.utils.vector_to_parameters(flat_params, self.__free_param_list.values())
-
-    #    return self.call_nll()
-
-    #def hessian(self):
-    #    hessian = atg.functional.hessian(self.func_call, tuple(self.free_param_list.values()))
-    #    return torch.stack([torch.stack(hs) for hs in hessian], dim=1)
 
     def hessian(self):
         params = tuple(self.__free_param_list.values())
@@ -268,46 +265,36 @@ class NegativeLogLikelihood(nn.Module, ABC):
         hessian = atg.functional.hessian(flat_func, flat_params)
         return hessian
 
-    #def inverse_hessian(self):
-    #    return torch.inverse(self.hessian())
     def inverse_hessian(self):
         hess = self.hessian()
         try:
-            # 计算条件数
+            # Calculate the condition number
             cond = torch.linalg.cond(hess)
-            if cond > 1e15:  # 设置一个阈值
+            if cond > 1e15:  # Set a threshold
                 print(f"Warning: Hessian matrix condition number is large ({cond:.2e}), which may lead to unstable results.")
             return torch.inverse(hess)
         except RuntimeError as e:
-            #print(f"Cannot calculate the inverse of Hessian matrix: {e}")
-            # 返回一个填充了NaN的矩阵
-            #return torch.full_like(hess, float('nan'))
             try:
                 print(f"Cannot calculate the inverse of Hessian matrix {e}, try to calculate the pseudo-inverse.")
                 return torch.linalg.pinv(hess)
             except RuntimeError as e:
                 print(f"Cannot calculate the pseudo-inverse of Hessian matrix: {e}")
-                #return torch.full_like(hess, float('nan'))
-                epsilon = 1e-6  # 可以根据需要调整这个值
+                epsilon = 1e-6 # Can be adjusted as needed
                 try:
                     return torch.inverse(hess + epsilon * torch.eye(hess.shape[0]))
                 except RuntimeError as e:
                     print(f"Cannot calculate the inverse of Hessian matrix: {e}")
                     return torch.full_like(hess, float('nan'))
-
-    #def std_error(self):
-    #    std_err = torch.sqrt(torch.diag(self.inverse_hessian()))
-    #    return std_err
         
     def std_error(self):
-        hess = self.hessian()
         try:
-            inv_hess = torch.inverse(hess)
+            inv_hess = self.inverse_hessian()
             std_err = torch.sqrt(torch.diag(inv_hess))
-            return std_err
+            return std_err, inv_hess
         except RuntimeError:
             print("Warning: Hessian matrix is not invertible, cannot calculate standard errors.")
-            return torch.full((hess.shape[0],), float('nan'))
+            hess = self.hessian()
+            return torch.full((hess.shape[0],), float('nan')), torch.full_like(hess, float('nan'))
 
     @property 
     def free_param_list(self) -> dict:
@@ -316,14 +303,18 @@ class NegativeLogLikelihood(nn.Module, ABC):
 class GaussianNLL(NegativeLogLikelihood):
     def __init__(self, amp: nn.Module, data: TensorDict):
         super().__init__(amp, data)
-        self.gauss_nll = nn.GaussianNLLLoss(reduction='sum')
+        self.loss = nn.GaussianNLLLoss(reduction='sum', eps=0)
 
     def call_nll(self):
-        # Gaussian distribution.
         nll = super().call_nll()
-        nll = nll + torch.sum((self.dataset['photon_electron']-self.amp(self.dataset))**2/self.dataset['pe_uncertainty']**2)
+
+        # If amp values contain NaN or inf, raise a ValueError exception
+        #amp_val = self.amp(self.dataset)
+        #if torch.isnan(amp_val).any() or torch.isinf(amp_val).any():
+        #    raise ValueError("Amp_val contains nan or inf values.")
+        nll = nll + torch.sum((self.dataset['photon_electron']-self.amp_val)**2/self.dataset['pe_uncertainty']**2)
+        #nll = nll + torch.sum((self.dataset['photon_electron']-sel)**2/self.dataset['pe_uncertainty']**2)
         return nll
-        #return torch.sum((self.dataset['photon_electron']-self.amp(self.dataset))**2/self.dataset['pe_uncertainty']**2)
 
     def call_nll_nosig(self):
         # Only for Chopped design. Assuming that all the backgrounds are shot noises.
@@ -332,11 +323,12 @@ class GaussianNLL(NegativeLogLikelihood):
 class PoissonNLL(NegativeLogLikelihood):
     def __init__(self, amp: nn.Module, data: TensorDict):
         super().__init__(amp, data)
+        self.loss = nn.PoissonNLLLoss()
 
     def call_nll(self):
         # Poisson distribution
-        nll = super().call_nll()
-        predicted_value = self.amp(self.dataset)
-        nll += torch.sum(predicted_value - self.dataset['photon_electron'] * torch.log(predicted_value))
+        #nll = super().call_nll() + self.loss(self.amp(self.dataset), self.dataset['photon_electron'])
+        #predicted_value = self.amp(self.dataset)
+        #nll = super().call_nll() + torch.sum(predicted_value - self.dataset['photon_electron'] * torch.log(predicted_value))
+        nll = super().call_nll() + torch.sum(self.amp_val - self.dataset['photon_electron'] * torch.log(self.amp_val))
         return nll
-        #return torch.sum(predicted_value - self.dataset['photon_electron'] * torch.log(predicted_value))
